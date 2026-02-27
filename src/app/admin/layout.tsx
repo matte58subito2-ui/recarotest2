@@ -33,6 +33,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link href="/admin/devices" className="sidebar-link">
                     <span style={{ width: '24px' }}>💻</span> Authorized Devices
                 </Link>
+                <Link href="/admin/logs" className="sidebar-link">
+                    <span style={{ width: '24px' }}>📜</span> Audit Logs
+                </Link>
 
                 <div style={{ marginTop: 'auto', paddingTop: '40px' }}>
                     <Link href="/catalog" className="btn btn-ghost" style={{ width: '100%' }}>← Back to Catalogue</Link>

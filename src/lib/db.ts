@@ -52,8 +52,11 @@ export async function initSchema() {
   if (!columns.includes('address')) {
     await db.execute("ALTER TABLE users ADD COLUMN address TEXT");
   }
-  if (!columns.includes('is_active')) {
+  if (columns.includes('is_active')) {
     await db.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!columns.includes('revoked_all_at')) {
+    await db.execute("ALTER TABLE users ADD COLUMN revoked_all_at TEXT");
   }
 
   await db.execute(`
@@ -106,8 +109,35 @@ export async function initSchema() {
       user_id INTEGER NOT NULL,
       fingerprint TEXT NOT NULL,
       label TEXT,
+      is_approved INTEGER NOT NULL DEFAULT 0,
+      last_ip TEXT,
+      user_agent TEXT,
       last_used TEXT DEFAULT (datetime('now')),
       UNIQUE(user_id, fingerprint)
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      ip_address TEXT,
+      device_id TEXT,
+      details TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      jti TEXT UNIQUE NOT NULL,
+      expires_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS otp_verifications (
@@ -131,6 +161,19 @@ export async function initSchema() {
       value TEXT NOT NULL
     );
   `);
+
+  // Evolve user_fingerprints
+  const fingerRes = await db.execute("PRAGMA table_info(user_fingerprints)");
+  const fingerCols = fingerRes.rows.map(c => c.name as string);
+  if (!fingerCols.includes('is_approved')) {
+    await db.execute("ALTER TABLE user_fingerprints ADD COLUMN is_approved INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!fingerCols.includes('last_ip')) {
+    await db.execute("ALTER TABLE user_fingerprints ADD COLUMN last_ip TEXT");
+  }
+  if (!fingerCols.includes('user_agent')) {
+    await db.execute("ALTER TABLE user_fingerprints ADD COLUMN user_agent TEXT");
+  }
 
   // Initialize default API key if not exists
   const hasApiKeyRes = await db.execute({

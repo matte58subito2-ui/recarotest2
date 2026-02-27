@@ -123,6 +123,34 @@ export default function LoginPage() {
         }
     }
 
+    const [isForgotMode, setIsForgotMode] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+
+    async function handleForgotSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            const res = await fetch('/api/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: forgotEmail }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSuccess(data.message);
+                setIsForgotMode(false);
+            } else {
+                setError(data.error);
+            }
+        } catch {
+            setError('System error');
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
         <div className={styles.page}>
             <div className={styles.bg} />
@@ -133,7 +161,7 @@ export default function LoginPage() {
                 <p className={styles.subtitle}>B2B Platform — Restricted Access</p>
 
                 {/* Mode Switcher */}
-                {!mfaRequired && (
+                {!mfaRequired && !isForgotMode && (
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', background: '#0a0a0a', padding: '6px', borderRadius: '12px', border: '1px solid #2a2a2a' }}>
                         <button
                             type="button"
@@ -152,7 +180,32 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                {mfaRequired ? (
+                {isForgotMode ? (
+                    <form onSubmit={handleForgotSubmit} className={styles.form}>
+                        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                            <h2 className="text-xl font-bold">Recupero Password</h2>
+                            <p className="text-sm text-gray-500">Inserisci la tua email per ricevere un link di ripristino.</p>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Email Registrata</label>
+                            <input
+                                className="form-input"
+                                type="email"
+                                value={forgotEmail}
+                                onChange={e => setForgotEmail(e.target.value)}
+                                required
+                                placeholder="name@company.com"
+                            />
+                        </div>
+                        {error && <div className={styles.error}>⚠ {error}</div>}
+                        <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%' }}>
+                            {loading ? 'Invio in corso...' : 'Invia Link di Ripristino'}
+                        </button>
+                        <button type="button" onClick={() => setIsForgotMode(false)} className="btn btn-ghost mt-4" style={{ width: '100%' }}>
+                            Torna al Login
+                        </button>
+                    </form>
+                ) : mfaRequired ? (
                     <form onSubmit={handleVerifyOtp} className={styles.form}>
                         <div className="text-center mb-6">
                             <h2 className="text-xl font-bold mb-2">New Device Detected</h2>
@@ -232,7 +285,16 @@ export default function LoginPage() {
                             />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Password</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label className="form-label">Password</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsForgotMode(true)}
+                                    style={{ fontSize: '12px', color: 'var(--recaro-red)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px 0' }}
+                                >
+                                    Dimenticata?
+                                </button>
+                            </div>
                             <input
                                 className="form-input"
                                 type="password"
@@ -244,6 +306,7 @@ export default function LoginPage() {
                             />
                         </div>
                         {error && <div className={styles.error}>⚠ {error}</div>}
+                        {success && <div style={{ color: 'var(--success)', fontSize: '14px', textAlign: 'center', background: 'rgba(34, 197, 94, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)', marginBottom: '16px' }}>✓ {success}</div>}
                         <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%' }}>
                             {loading ? 'Logging in...' : 'Access Platform'}
                         </button>

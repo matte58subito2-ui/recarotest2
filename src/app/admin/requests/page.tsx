@@ -41,16 +41,35 @@ export default function AdminRequestsPage() {
         }
     }
 
+    async function impersonateUser(userId: number) {
+        if (!confirm('Vuoi effettuare l\'accesso come questo utente? Verrai reindirizzato al catalogo.')) return;
+        try {
+            const res = await fetch('/api/admin/impersonate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                window.location.href = data.redirect;
+            } else {
+                alert(data.error || 'Errore durante l\'impersonificazione');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
     if (loading) return <div className="page">Caricamento richieste...</div>;
 
-    const pendingUsers = users.filter(u => u.is_active === 0);
-    const approvedUsers = users.filter(u => u.is_active === 1);
+    const pendingUsers = users.filter((u: any) => u.is_active === 0);
+    const approvedUsers = users.filter((u: any) => u.is_active === 1);
 
     return (
         <div className="page">
             <div style={{ marginBottom: '32px' }}>
-                <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Richieste di Registrazione</h1>
-                <p style={{ color: 'var(--text2)' }}>Gestisci l'accesso degli operatori alla piattaforma B2B.</p>
+                <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Gestione Utenti & Sicurezza</h1>
+                <p style={{ color: 'var(--text2)' }}>Approva nuove registrazioni, gestisci operatori attivi o intervieni per assistenza.</p>
             </div>
 
             {message && (
@@ -126,13 +145,22 @@ export default function AdminRequestsPage() {
                                     <td>{user.email}</td>
                                     <td><span className="badge badge-green">Attivo</span></td>
                                     <td>
-                                        <button
-                                            onClick={() => toggleApproval(user.id, user.is_active)}
-                                            className="btn btn-ghost btn-sm"
-                                            style={{ color: 'var(--red-light)' }}
-                                        >
-                                            Sospendi
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => impersonateUser(user.id)}
+                                                className="btn btn-primary btn-sm"
+                                                title="Assistenza: entra come questo utente"
+                                            >
+                                                Assisti
+                                            </button>
+                                            <button
+                                                onClick={() => toggleApproval(user.id, user.is_active)}
+                                                className="btn btn-ghost btn-sm"
+                                                style={{ color: 'var(--red-light)' }}
+                                            >
+                                                Sospendi
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

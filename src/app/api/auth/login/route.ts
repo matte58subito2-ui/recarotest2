@@ -27,60 +27,66 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Il tuo account è in attesa di approvazione dall\'amministratore' }, { status: 403 });
         }
 
-        // --- Fingerprinting Logic ---
+        // --- Fingerprinting & Device Approval ---
+        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const userAgent = request.headers.get('user-agent') || 'Unknown';
+
         if (visitorId) {
             const fingerprintsRes = await db.execute({
-                sql: 'SELECT * FROM user_fingerprints WHERE user_id = ?',
-                args: [user.id]
+                sql: 'SELECT * FROM user_fingerprints WHERE user_id = ? AND fingerprint = ?',
+                args: [user.id, visitorId]
             });
-            const fingerprints = fingerprintsRes.rows as any[];
+            const fingerprint = fingerprintsRes.rows[0] as any;
 
-            const isAuthorized = fingerprints.some(f => f.fingerprint === visitorId);
-
-            if (fingerprints.length === 0) {
-                // First device: auto-authorize
+            if (!fingerprint) {
+                // New device: Enroll but keep unapproved
                 await db.execute({
-                    sql: 'INSERT INTO user_fingerprints (user_id, fingerprint, label) VALUES (?, ?, ?)',
-                    args: [user.id, visitorId, 'Primary Device']
-                });
-                console.log(`[AUTH] First device authorized for ${username}: ${visitorId}`);
-            } else if (!isAuthorized) {
-                // New device: trigger OTP
-                const otp = Math.floor(100000 + Math.random() * 900000).toString();
-                const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
-
-                // Delete old OTPs for this user
-                await db.execute({
-                    sql: 'DELETE FROM otp_verifications WHERE user_id = ?',
-                    args: [user.id]
+                    sql: 'INSERT INTO user_fingerprints (user_id, fingerprint, label, is_approved, last_ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+                    args: [user.id, visitorId, 'New Device', 0, ip, userAgent]
                 });
 
+                // Log the event
                 await db.execute({
-                    sql: 'INSERT INTO otp_verifications (user_id, fingerprint, otp_code, expires_at) VALUES (?, ?, ?, ?)',
-                    args: [user.id, visitorId, otp, expiresAt]
+                    sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
+                    args: [user.id, 'DEVICE_ENROLLMENT_PENDING', ip, visitorId, JSON.stringify({ userAgent })]
                 });
-
-                console.log(`\n--- [SECURITY ALERT] ---`);
-                console.log(`New device detected for user: ${username}`);
-                console.log(`Device ID: ${visitorId}`);
-                console.log(`Generated OTP code: ${otp}`);
-                console.log(`--- [LOGGED TO CONSOLE FOR B2B DEMO] ---\n`);
 
                 return NextResponse.json({
                     ok: false,
-                    mfa_required: true,
-                    message: 'New device detected. Please enter the verification code sent to your email.'
-                });
-            } else {
-                // Update last used
-                await db.execute({
-                    sql: 'UPDATE user_fingerprints SET last_used = (datetime(\'now\')) WHERE user_id = ? AND fingerprint = ?',
-                    args: [user.id, visitorId]
-                });
+                    approval_required: true,
+                    message: 'Questo dispositivo non è autorizzato. Attendi l\'approvazione dell\'amministratore.'
+                }, { status: 403 });
             }
+
+            if (fingerprint.is_approved === 0) {
+                // Log attempt
+                await db.execute({
+                    sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
+                    args: [user.id, 'LOGIN_BLOCKED_PENDING_APPROVAL', ip, visitorId, JSON.stringify({ userAgent })]
+                });
+
+                return NextResponse.json({
+                    ok: false,
+                    approval_required: true,
+                    message: 'Il tuo dispositivo è in attesa di approvazione dall\'amministratore.'
+                }, { status: 403 });
+            }
+
+            // Approved: Update last used
+            await db.execute({
+                sql: 'UPDATE user_fingerprints SET last_used = (datetime(\'now\')), last_ip = ?, user_agent = ? WHERE id = ?',
+                args: [ip, userAgent, Number(fingerprint.id)]
+            });
         }
 
+        // --- Success Logic ---
         const token = signToken({ id: Number(user.id), username: user.username as string, role: user.role as string });
+
+        // Log success
+        await db.execute({
+            sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id) VALUES (?, ?, ?, ?)',
+            args: [user.id, 'LOGIN_SUCCESS', ip, visitorId]
+        });
 
         const response = NextResponse.json({ ok: true, role: user.role });
         response.cookies.set(COOKIE_NAME, token, {
