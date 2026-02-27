@@ -29,46 +29,68 @@ export async function seed() {
     const db = getDb();
 
     // Admin user
-    const existingAdmin = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-    if (!existingAdmin) {
+    const existingAdminRes = await db.execute({
+        sql: 'SELECT id FROM users WHERE username = ?',
+        args: ['admin']
+    });
+
+    if (existingAdminRes.rows.length === 0) {
         const hash = bcrypt.hashSync('recaro2024', 10);
-        db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)').run('admin', hash, 'admin');
+        await db.execute({
+            sql: 'INSERT INTO users (username, password_hash, role, is_active) VALUES (?, ?, ?, 1)',
+            args: ['admin', hash, 'admin']
+        });
         console.log('✅ Admin user created: admin / recaro2024');
     }
 
     // Default IPs
     const ips = ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
     for (const ip of ips) {
-        const existing = db.prepare('SELECT id FROM ip_whitelist WHERE ip_address = ?').get(ip);
-        if (!existing) {
-            db.prepare('INSERT INTO ip_whitelist (ip_address, label) VALUES (?, ?)').run(ip, 'Localhost');
+        const existingRes = await db.execute({
+            sql: 'SELECT id FROM ip_whitelist WHERE ip_address = ?',
+            args: [ip]
+        });
+        if (existingRes.rows.length === 0) {
+            await db.execute({
+                sql: 'INSERT INTO ip_whitelist (ip_address, label) VALUES (?, ?)',
+                args: [ip, 'Localhost']
+            });
         }
     }
     console.log('✅ Localhost IPs added to whitelist');
 
     // Seats
-    const existingSeats = db.prepare('SELECT COUNT(*) as c FROM seats').get() as { c: number };
-    if (existingSeats.c === 0) {
-        const insertSeat = db.prepare('INSERT INTO seats (model_name, slug, description, category, base_price, image_url) VALUES (?, ?, ?, ?, ?, ?)');
-        const insertMat = db.prepare('INSERT INTO seat_materials (seat_id, material, colors, price_delta) VALUES (?, ?, ?, ?)');
-        const insertAcc = db.prepare('INSERT INTO seat_accessories (seat_id, name, description, price) VALUES (?, ?, ?, ?)');
+    const existingSeatsRes = await db.execute('SELECT COUNT(*) as c FROM seats');
+    const existingSeats = existingSeatsRes.rows[0] as unknown as { c: number };
 
-        const insertAll = db.transaction(() => {
-            for (const seat of SEATS) {
-                const uniqueSlug = `${seat.slug}-${seat.category.toLowerCase()}`;
-                const info = insertSeat.run(seat.model_name, uniqueSlug, seat.description, seat.category, seat.base_price, seat.image_url || null);
-                const seatId = info.lastInsertRowid;
-                for (const mat of MATERIALS) {
-                    insertMat.run(seatId, mat.material, mat.colors, mat.price_delta);
-                }
-                // 2-3 accessories per seat
-                const accs = ACCESSORIES.slice(0, 2 + Math.floor(Math.random() * 2));
-                for (const acc of accs) {
-                    insertAcc.run(seatId, acc.name, acc.description, acc.price);
-                }
+    if (existingSeats.c === 0) {
+        console.log('Seeding seats...');
+        for (const seat of SEATS) {
+            const uniqueSlug = `${seat.slug}-${seat.category.toLowerCase()}`;
+
+            const info = await db.execute({
+                sql: 'INSERT INTO seats (model_name, slug, description, category, base_price, image_url) VALUES (?, ?, ?, ?, ?, ?)',
+                args: [seat.model_name, uniqueSlug, seat.description, seat.category, seat.base_price, seat.image_url || null]
+            });
+
+            const seatId = Number(info.lastInsertRowid);
+
+            for (const mat of MATERIALS) {
+                await db.execute({
+                    sql: 'INSERT INTO seat_materials (seat_id, material, colors, price_delta) VALUES (?, ?, ?, ?)',
+                    args: [seatId, mat.material, mat.colors, mat.price_delta]
+                });
             }
-        });
-        insertAll();
+
+            // 2-3 accessories per seat
+            const accs = ACCESSORIES.slice(0, 2 + Math.floor(Math.random() * 2));
+            for (const acc of accs) {
+                await db.execute({
+                    sql: 'INSERT INTO seat_accessories (seat_id, name, description, price) VALUES (?, ?, ?, ?)',
+                    args: [seatId, acc.name, acc.description, acc.price]
+                });
+            }
+        }
         console.log(`✅ ${SEATS.length} seat models seeded with materials and accessories`);
     }
 

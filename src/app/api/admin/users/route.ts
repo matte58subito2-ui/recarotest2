@@ -12,12 +12,13 @@ export async function GET() {
         }
 
         const db = getDb();
-        const users = db.prepare(`
+        const usersRes = await db.execute(`
             SELECT id, email, company_name, vat, address, is_active, created_at 
             FROM users 
             WHERE role = 'user' 
             ORDER BY created_at DESC
-        `).all();
+        `);
+        const users = usersRes.rows as any[];
 
         return NextResponse.json({ users });
     } catch (error) {

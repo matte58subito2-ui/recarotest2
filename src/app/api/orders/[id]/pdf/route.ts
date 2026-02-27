@@ -13,7 +13,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 
   const db = getDb();
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(params.id)) as any;
+  const orderRes = await db.execute({
+    sql: 'SELECT * FROM orders WHERE id = ?',
+    args: [Number(params.id)]
+  });
+  const order = orderRes.rows[0];
   if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   // If no session but there's a guest cookie, make sure this order is actually a guest order
@@ -21,14 +25,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const config = JSON.parse(order.config_json);
+  const config = JSON.parse(order.config_json as string);
 
   // Generate HTML for PDF (client will print)
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Order ${order.order_number}</title>
+  <title>Order ${order.order_number as string}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; background: #fff; color: #1a1a1a; padding: 40px; }
@@ -53,9 +57,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       <div style="font-size:12px; color:#888; margin-top:8px;">B2B Platform — Configured Order</div>
     </div>
     <div class="meta">
-      <div><strong>Order No:</strong> ${order.order_number}</div>
-      <div><strong>Date:</strong> ${new Date(order.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
-      <div style="margin-top:8px"><span class="badge">${order.status}</span></div>
+      <div><strong>Order No:</strong> ${order.order_number as string}</div>
+      <div><strong>Date:</strong> ${new Date(order.created_at as string).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      <div style="margin-top:8px"><span class="badge">${order.status as string}</span></div>
     </div>
   </div>
 
@@ -108,7 +112,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       <tr><td>Material (${config.material})</td><td>€ ${(config.materialPriceDelta || 0).toFixed(2)}</td></tr>
       ${config.heating ? `<tr><td>Heating</td><td>€ ${(config.heatingCost || 0).toFixed(2)}</td></tr>` : ''}
       ${(config.accessoriesTotal || 0) > 0 ? `<tr><td>Accessories</td><td>€ ${(config.accessoriesTotal || 0).toFixed(2)}</td></tr>` : ''}
-      <tr class="total-row"><td>TOTAL</td><td>€ ${order.total_price?.toFixed(2) || '0.00'}</td></tr>
+      <tr class="total-row"><td>TOTAL</td><td>€ ${Number(order.total_price || 0).toFixed(2)}</td></tr>
     </table>
   </div>
 

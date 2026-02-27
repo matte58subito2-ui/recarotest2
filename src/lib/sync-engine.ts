@@ -15,63 +15,74 @@ export async function syncProducts(source: string, products: ERPSyncData[]) {
     let updatedCount = 0;
     let createdCount = 0;
 
-    const upsert = db.transaction((dataList: ERPSyncData[]) => {
-        for (const item of dataList) {
+    try {
+        for (const item of products) {
             // Generate slug from model_name and category
             const slug = (item.model_name + '-' + item.category)
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
 
-            const existing = db.prepare('SELECT id FROM seats WHERE slug = ?').get(slug) as any;
+            const existingRes = await db.execute({
+                sql: 'SELECT id FROM seats WHERE slug = ?',
+                args: [slug]
+            });
+            const existing = existingRes.rows[0];
 
             if (existing) {
-                db.prepare(`
-                    UPDATE seats 
-                    SET model_name = ?, 
-                        description = ?, 
-                        category = ?, 
-                        base_price = ?, 
-                        image_url = ?, 
-                        active = ?
-                    WHERE id = ?
-                `).run(
-                    item.model_name,
-                    item.description || '',
-                    item.category,
-                    item.base_price,
-                    item.image_url || '',
-                    item.active === false ? 0 : 1,
-                    existing.id
-                );
+                await db.execute({
+                    sql: `
+                        UPDATE seats 
+                        SET model_name = ?, 
+                            description = ?, 
+                            category = ?, 
+                            base_price = ?, 
+                            image_url = ?, 
+                            active = ?
+                        WHERE id = ?
+                    `,
+                    args: [
+                        item.model_name,
+                        item.description || '',
+                        item.category,
+                        item.base_price,
+                        item.image_url || '',
+                        item.active === false ? 0 : 1,
+                        Number(existing.id)
+                    ]
+                });
                 updatedCount++;
             } else {
-                db.prepare(`
-                    INSERT INTO seats (model_name, slug, description, category, base_price, image_url, active)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `).run(
-                    item.model_name,
-                    slug,
-                    item.description || '',
-                    item.category,
-                    item.base_price,
-                    item.image_url || '',
-                    item.active === false ? 0 : 1
-                );
+                await db.execute({
+                    sql: `
+                        INSERT INTO seats (model_name, slug, description, category, base_price, image_url, active)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `,
+                    args: [
+                        item.model_name,
+                        slug,
+                        item.description || '',
+                        item.category,
+                        item.base_price,
+                        item.image_url || '',
+                        item.active === false ? 0 : 1
+                    ]
+                });
                 createdCount++;
             }
         }
-    });
 
-    try {
-        upsert(products);
         const logMsg = `Synced ${products.length} products (${createdCount} new, ${updatedCount} updated)`;
-        db.prepare('INSERT INTO sync_logs (source, status, message) VALUES (?, ?, ?)')
-            .run(source, 'SUCCESS', logMsg);
+        await db.execute({
+            sql: 'INSERT INTO sync_logs (source, status, message) VALUES (?, ?, ?)',
+            args: [source, 'SUCCESS', logMsg]
+        });
         return { success: true, message: logMsg };
     } catch (err: any) {
-        db.prepare('INSERT INTO sync_logs (source, status, message) VALUES (?, ?, ?)')
-            .run(source, 'ERROR', err.message);
+        await db.execute({
+            sql: 'INSERT INTO sync_logs (source, status, message) VALUES (?, ?, ?)',
+            args: [source, 'ERROR', err.message]
+        });
         throw err;
     }
 }

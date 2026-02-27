@@ -7,9 +7,13 @@ export async function POST(request: NextRequest) {
         const apiKey = request.headers.get('x-api-key');
         const db = getDb();
 
-        const storedKey = db.prepare('SELECT value FROM settings WHERE key = ?').get('SYNC_API_KEY') as any;
+        const storedKeyRes = await db.execute({
+            sql: 'SELECT value FROM settings WHERE key = ?',
+            args: ['SYNC_API_KEY']
+        });
+        const storedKey = storedKeyRes.rows[0];
 
-        if (!apiKey || apiKey !== storedKey?.value) {
+        if (!apiKey || apiKey !== (storedKey?.value as string)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 

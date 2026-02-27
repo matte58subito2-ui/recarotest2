@@ -1,16 +1,25 @@
 import getDb from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
-export default function SyncPage() {
+export default async function SyncPage() {
     const db = getDb();
-    const logs = db.prepare('SELECT * FROM sync_logs ORDER BY created_at DESC LIMIT 50').all() as any[];
-    const apiKeySetting = db.prepare('SELECT value FROM settings WHERE key = ?').get('SYNC_API_KEY') as any;
+    const logsRes = await db.execute('SELECT * FROM sync_logs ORDER BY created_at DESC LIMIT 50');
+    const logs = logsRes.rows;
+
+    const apiKeySettingRes = await db.execute({
+        sql: 'SELECT value FROM settings WHERE key = ?',
+        args: ['SYNC_API_KEY']
+    });
+    const apiKeySetting = apiKeySettingRes.rows[0];
 
     async function regenerateKey() {
         'use server';
         const newKey = 'recaro_sync_' + Math.random().toString(36).substring(2, 15);
         const db = getDb();
-        db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(newKey, 'SYNC_API_KEY');
+        await db.execute({
+            sql: 'UPDATE settings SET value = ? WHERE key = ?',
+            args: [newKey, 'SYNC_API_KEY']
+        });
         revalidatePath('/admin/sync');
     }
 
@@ -33,7 +42,7 @@ export default function SyncPage() {
                 <div className="card" style={{ background: 'linear-gradient(135deg, #111 0%, #1a1a1a 100%)' }}>
                     <div style={{ fontSize: '12px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Current API Key</div>
                     <div style={{ fontSize: '18px', fontWeight: '700', fontFamily: 'monospace', wordBreak: 'break-all', color: 'var(--red-light)' }}>
-                        {apiKeySetting?.value}
+                        {apiKeySetting?.value as string}
                     </div>
                     <form action={regenerateKey} style={{ marginTop: '16px' }}>
                         <button type="submit" className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
@@ -52,13 +61,13 @@ export default function SyncPage() {
                         <div>
                             <div style={{ color: '#888', fontSize: '13px' }}>Success Rate</div>
                             <div style={{ fontSize: '32px', fontWeight: '800', color: 'var(--success)' }}>
-                                {logs.length > 0 ? ((logs.filter(l => l.status === 'SUCCESS').length / logs.length) * 100).toFixed(0) : 0}%
+                                {logs.length > 0 ? ((logs.filter((l: any) => l.status === 'SUCCESS').length / logs.length) * 100).toFixed(0) : 0}%
                             </div>
                         </div>
                         <div>
                             <div style={{ color: '#888', fontSize: '13px' }}>Last Source</div>
                             <div style={{ fontSize: '32px', fontWeight: '800' }}>
-                                {logs[0]?.source || 'N/A'}
+                                {(logs[0] as any)?.source || 'N/A'}
                             </div>
                         </div>
                     </div>
@@ -77,7 +86,7 @@ export default function SyncPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {logs.map(log => (
+                        {logs.map((log: any) => (
                             <tr key={log.id}>
                                 <td style={{ whiteSpace: 'nowrap', fontSize: '13px', color: '#888' }}>{log.created_at}</td>
                                 <td>

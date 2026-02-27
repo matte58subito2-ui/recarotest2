@@ -11,19 +11,27 @@ export async function POST(request: NextRequest) {
         }
 
         const db = getDb();
-        const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+        const userRes = await db.execute({
+            sql: 'SELECT * FROM users WHERE username = ?',
+            args: [username]
+        });
+        const user = userRes.rows[0];
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        const verification = db.prepare('SELECT * FROM otp_verifications WHERE user_id = ? AND fingerprint = ?').get(user.id, visitorId) as any;
+        const verificationRes = await db.execute({
+            sql: 'SELECT * FROM otp_verifications WHERE user_id = ? AND fingerprint = ?',
+            args: [Number(user.id), visitorId]
+        });
+        const verification = verificationRes.rows[0];
 
         if (!verification) {
             return NextResponse.json({ error: 'No active verification found' }, { status: 400 });
         }
 
-        if (new Date() > new Date(verification.expires_at)) {
+        if (new Date() > new Date(verification.expires_at as string)) {
             return NextResponse.json({ error: 'Verification code expired' }, { status: 400 });
         }
 
@@ -32,14 +40,19 @@ export async function POST(request: NextRequest) {
         }
 
         // Success: Authorize the device
-        db.prepare('INSERT OR REPLACE INTO user_fingerprints (user_id, fingerprint, label) VALUES (?, ?, ?)')
-            .run(user.id, visitorId, 'Authorized Device');
+        await db.execute({
+            sql: 'INSERT OR REPLACE INTO user_fingerprints (user_id, fingerprint, label) VALUES (?, ?, ?)',
+            args: [Number(user.id), visitorId, 'Authorized Device']
+        });
 
         // Cleanup OTP
-        db.prepare('DELETE FROM otp_verifications WHERE id = ?').run(verification.id);
+        await db.execute({
+            sql: 'DELETE FROM otp_verifications WHERE id = ?',
+            args: [Number(verification.id)]
+        });
 
         // Sign token and login
-        const token = signToken({ id: user.id, username: user.username, role: user.role });
+        const token = signToken({ id: Number(user.id), username: user.username as string, role: user.role as string });
 
         const response = NextResponse.json({ ok: true, role: user.role });
         response.cookies.set(COOKIE_NAME, token, {

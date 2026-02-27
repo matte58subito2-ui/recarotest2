@@ -1,20 +1,24 @@
 import getDb from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
-export default function DevicesPage() {
+export default async function DevicesPage() {
     const db = getDb();
-    const devices = db.prepare(`
+    const devicesRes = await db.execute(`
         SELECT f.*, u.username 
         FROM user_fingerprints f 
         JOIN users u ON f.user_id = u.id 
         ORDER BY f.last_used DESC
-    `).all() as any[];
+    `);
+    const devices = devicesRes.rows;
 
     async function deleteDevice(formData: FormData) {
         'use server';
         const id = formData.get('id');
         const db = getDb();
-        db.prepare('DELETE FROM user_fingerprints WHERE id = ?').run(id);
+        await db.execute({
+            sql: 'DELETE FROM user_fingerprints WHERE id = ?',
+            args: [id as string]
+        });
         revalidatePath('/admin/devices');
     }
 
@@ -36,11 +40,11 @@ export default function DevicesPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {devices.map(d => (
+                        {devices.map((d: any) => (
                             <tr key={d.id}>
                                 <td style={{ fontWeight: '600' }}>{d.username}</td>
                                 <td style={{ fontFamily: 'monospace', fontSize: '12px', color: '#888' }}>
-                                    {d.fingerprint.substring(0, 16)}...
+                                    {(d.fingerprint as string).substring(0, 16)}...
                                 </td>
                                 <td>
                                     <span className="badge badge-gray">{d.label || 'Unknown'}</span>

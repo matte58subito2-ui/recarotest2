@@ -14,32 +14,29 @@ export async function POST(request: NextRequest) {
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
 
         const db = getDb();
-        const insertSeat = db.prepare(
-            'INSERT OR REPLACE INTO seats (model_name, slug, description, category, base_price) VALUES (?, ?, ?, ?, ?)'
-        );
-
         let count = 0;
-        const insertAll = db.transaction(() => {
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                if (values.length < 3) continue;
-                const row: any = {};
-                headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-                const slug = (row.model_name || row.nome || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                if (!slug) continue;
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            if (values.length < 3) continue;
+            const row: any = {};
+            headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
 
-                insertSeat.run(
+            const slug = (row.model_name || row.nome || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            if (!slug) continue;
+
+            await db.execute({
+                sql: 'INSERT OR REPLACE INTO seats (model_name, slug, description, category, base_price) VALUES (?, ?, ?, ?, ?)',
+                args: [
                     row.model_name || row.nome || `Modello ${i}`,
                     slug,
                     row.description || row.descrizione || '',
                     row.category || row.categoria || 'Generale',
                     parseFloat(row.base_price || row.prezzo || '0') || 0
-                );
-                count++;
-            }
-        });
-        insertAll();
+                ]
+            });
+            count++;
+        }
 
         return NextResponse.json({ ok: true, imported: count });
     } catch (err: any) {

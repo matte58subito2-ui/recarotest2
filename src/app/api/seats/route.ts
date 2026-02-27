@@ -4,8 +4,8 @@ import { getSession } from '@/lib/auth';
 
 export async function GET() {
     const db = getDb();
-    const seats = db.prepare('SELECT * FROM seats WHERE active = 1 ORDER BY category, model_name').all();
-    return NextResponse.json(seats);
+    const seatsRes = await db.execute('SELECT * FROM seats WHERE active = 1 ORDER BY category, model_name');
+    return NextResponse.json(seatsRes.rows);
 }
 
 export async function POST(request: NextRequest) {
@@ -18,10 +18,11 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { model_name, slug, description, category, base_price } = body;
         const db = getDb();
-        const info = db.prepare(
-            'INSERT INTO seats (model_name, slug, description, category, base_price) VALUES (?, ?, ?, ?, ?)'
-        ).run(model_name, slug, description, category, base_price);
-        return NextResponse.json({ id: info.lastInsertRowid });
+        const info = await db.execute({
+            sql: 'INSERT INTO seats (model_name, slug, description, category, base_price) VALUES (?, ?, ?, ?, ?)',
+            args: [model_name, slug, description, category, base_price]
+        });
+        return NextResponse.json({ id: Number(info.lastInsertRowid) });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 400 });
     }

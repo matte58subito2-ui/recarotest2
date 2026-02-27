@@ -1,32 +1,30 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { createClient, Client } from '@libsql/client';
 
-const DB_DIR = path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DB_DIR, 'recaro.db');
+let client: Client | null = null;
 
-let db: Database.Database;
+export function getDb(): Client {
+  if (client) return client;
 
-export function getDb(): Database.Database {
-  if (db) return db;
+  const url = process.env.TURSO_DATABASE_URL || `file:${process.cwd()}/data/recaro.db`;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-  }
+  client = createClient({
+    url,
+    authToken,
+  });
 
-  db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  initSchema(db);
-  return db;
+  return client;
 }
 
-function initSchema(db: Database.Database) {
-  db.exec(`
+export async function initSchema() {
+  const db = getDb();
+
+  // Check if tables exist
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE,
+      email TEXT,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user',
       company_name TEXT,
@@ -37,28 +35,28 @@ function initSchema(db: Database.Database) {
     );
   `);
 
-  // Evolve schema: add missing columns if they don't exist
-  const tableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
-  const columns = tableInfo.map(c => c.name);
+  // Evolve schema
+  const result = await db.execute("PRAGMA table_info(users)");
+  const columns = result.rows.map(c => c.name as string);
 
   if (!columns.includes('email')) {
-    db.prepare("ALTER TABLE users ADD COLUMN email TEXT").run();
-    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)").run();
+    await db.execute("ALTER TABLE users ADD COLUMN email TEXT");
+    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)");
   }
   if (!columns.includes('company_name')) {
-    db.prepare("ALTER TABLE users ADD COLUMN company_name TEXT").run();
+    await db.execute("ALTER TABLE users ADD COLUMN company_name TEXT");
   }
   if (!columns.includes('vat')) {
-    db.prepare("ALTER TABLE users ADD COLUMN vat TEXT").run();
+    await db.execute("ALTER TABLE users ADD COLUMN vat TEXT");
   }
   if (!columns.includes('address')) {
-    db.prepare("ALTER TABLE users ADD COLUMN address TEXT").run();
+    await db.execute("ALTER TABLE users ADD COLUMN address TEXT");
   }
   if (!columns.includes('is_active')) {
-    db.prepare("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0").run();
+    await db.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0");
   }
 
-  db.exec(`
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS ip_whitelist (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       ip_address TEXT UNIQUE NOT NULL,
@@ -82,8 +80,7 @@ function initSchema(db: Database.Database) {
       seat_id INTEGER NOT NULL,
       material TEXT NOT NULL,
       colors TEXT NOT NULL,
-      price_delta REAL NOT NULL DEFAULT 0,
-      FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE
+      price_delta REAL NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS seat_accessories (
@@ -91,8 +88,7 @@ function initSchema(db: Database.Database) {
       seat_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
-      price REAL NOT NULL DEFAULT 0,
-      FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE
+      price REAL NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS orders (
@@ -102,8 +98,7 @@ function initSchema(db: Database.Database) {
       config_json TEXT NOT NULL,
       total_price REAL NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'pending',
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      created_at TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS user_fingerprints (
@@ -112,7 +107,6 @@ function initSchema(db: Database.Database) {
       fingerprint TEXT NOT NULL,
       label TEXT,
       last_used TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       UNIQUE(user_id, fingerprint)
     );
 
@@ -121,14 +115,13 @@ function initSchema(db: Database.Database) {
       user_id INTEGER NOT NULL,
       fingerprint TEXT NOT NULL,
       otp_code TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      expires_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS sync_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      source TEXT NOT NULL, -- 'MAGO', 'SAP', 'MANUAL'
-      status TEXT NOT NULL, -- 'SUCCESS', 'ERROR'
+      source TEXT NOT NULL,
+      status TEXT NOT NULL,
       message TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
@@ -140,9 +133,16 @@ function initSchema(db: Database.Database) {
   `);
 
   // Initialize default API key if not exists
-  const hasApiKey = db.prepare('SELECT 1 FROM settings WHERE key = ?').get('SYNC_API_KEY');
-  if (!hasApiKey) {
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('SYNC_API_KEY', 'recaro_sync_secure_2024');
+  const hasApiKeyRes = await db.execute({
+    sql: 'SELECT 1 FROM settings WHERE key = ?',
+    args: ['SYNC_API_KEY']
+  });
+
+  if (hasApiKeyRes.rows.length === 0) {
+    await db.execute({
+      sql: 'INSERT INTO settings (key, value) VALUES (?, ?)',
+      args: ['SYNC_API_KEY', 'recaro_sync_secure_2024']
+    });
   }
 }
 

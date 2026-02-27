@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
         }
 
         const db = getDb();
-        db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(active ? 1 : 0, userId);
+        await db.execute({
+            sql: 'UPDATE users SET is_active = ? WHERE id = ?',
+            args: [active ? 1 : 0, userId]
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

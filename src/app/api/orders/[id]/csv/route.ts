@@ -7,16 +7,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const db = getDb();
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(params.id)) as any;
+    const orderRes = await db.execute({
+        sql: 'SELECT * FROM orders WHERE id = ?',
+        args: [Number(params.id)]
+    });
+    const order = orderRes.rows[0];
     if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const config = JSON.parse(order.config_json);
+    const config = JSON.parse(order.config_json as string);
 
     // Generate CSV
     const csvRows = [
         ['Field', 'Value'],
-        ['Order Number', order.order_number],
-        ['Date', order.created_at],
+        ['Order Number', order.order_number as string],
+        ['Date', order.created_at as string],
         ['Seat Model', config.seatName || ''],
         ['Material', config.material || ''],
         ['Color', config.color || ''],
@@ -26,9 +30,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         ['Logo - Seat Back', config.logos?.retroSedile ? 'Yes' : 'No'],
         ['Logo - Bolsters', config.logos?.fianchetti ? 'Yes' : 'No'],
         ['Accessories', (config.accessories || []).join(', ')],
-        ['Base Price', `€ ${config.basePrice?.toFixed(2) || '0.00'}`],
-        ['Total', `€ ${order.total_price?.toFixed(2) || '0.00'}`],
-        ['Status', order.status],
+        ['Base Price', `€ ${Number(config.basePrice || 0).toFixed(2)}`],
+        ['Total', `€ ${Number(order.total_price || 0).toFixed(2)}`],
+        ['Status', order.status as string],
     ];
 
     const csv = csvRows.map(row => row.map(v => `"${v}"`).join(',')).join('\n');

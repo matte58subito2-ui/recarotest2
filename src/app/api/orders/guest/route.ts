@@ -23,9 +23,10 @@ export async function POST(request: NextRequest) {
             (config.heatingCost || 0) + (config.accessoriesTotal || 0);
 
         // Guest order: insert user_id = null. We store guest lead details in config_json.
-        const info = db.prepare(
-            'INSERT INTO orders (order_number, user_id, config_json, total_price) VALUES (?, ?, ?, ?)'
-        ).run(orderNumber, null, JSON.stringify(config), totalPrice);
+        const info = await db.execute({
+            sql: 'INSERT INTO orders (order_number, user_id, config_json, total_price) VALUES (?, ?, ?, ?)',
+            args: [orderNumber, null, JSON.stringify(config), totalPrice]
+        });
 
         // Auto-upload CSV to external platform (non-blocking) just like normal orders
         const webhookUrl = process.env.ERP_CSV_WEBHOOK_URL;
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
             }).catch(() => { });
         }
 
-        return NextResponse.json({ id: info.lastInsertRowid, orderNumber, totalPrice });
+        return NextResponse.json({ id: Number(info.lastInsertRowid), orderNumber, totalPrice });
     } catch (err: any) {
         console.error('Guest Order Error:', err);
         return NextResponse.json({ error: 'Failed to create guest order' }, { status: 500 });

@@ -9,8 +9,8 @@ export async function GET() {
         return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
     const db = getDb();
-    const ips = db.prepare('SELECT * FROM ip_whitelist ORDER BY created_at DESC').all();
-    return NextResponse.json(ips);
+    const ipsRes = await db.execute('SELECT * FROM ip_whitelist ORDER BY created_at DESC');
+    return NextResponse.json(ipsRes.rows);
 }
 
 // POST add IP
@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
     const { ip_address, label } = await request.json();
     const db = getDb();
     try {
-        const info = db.prepare('INSERT INTO ip_whitelist (ip_address, label) VALUES (?, ?)').run(ip_address, label);
-        return NextResponse.json({ id: info.lastInsertRowid });
+        const info = await db.execute({
+            sql: 'INSERT INTO ip_whitelist (ip_address, label) VALUES (?, ?)',
+            args: [ip_address, label]
+        });
+        return NextResponse.json({ id: Number(info.lastInsertRowid) });
     } catch (err: any) {
         return NextResponse.json({ error: 'IP già presente' }, { status: 400 });
     }
@@ -37,6 +40,9 @@ export async function DELETE(request: NextRequest) {
     }
     const { id } = await request.json();
     const db = getDb();
-    db.prepare('DELETE FROM ip_whitelist WHERE id = ?').run(id);
+    await db.execute({
+        sql: 'DELETE FROM ip_whitelist WHERE id = ?',
+        args: [id]
+    });
     return NextResponse.json({ ok: true });
 }

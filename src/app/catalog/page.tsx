@@ -31,15 +31,16 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
     const db = getDb();
     const selectedCat = searchParams.cat || '';
 
-    let query = 'SELECT * FROM seats WHERE active = 1';
-    const params: any[] = [];
+    let sql = 'SELECT * FROM seats WHERE active = 1';
+    const args: any[] = [];
     if (selectedCat) {
-        query += ' AND category = ?';
-        params.push(selectedCat);
+        sql += ' AND category = ?';
+        args.push(selectedCat);
     }
-    query += ' ORDER BY category, model_name';
+    sql += ' ORDER BY category, model_name';
 
-    const seats = db.prepare(query).all(...params) as any[];
+    const seatsRes = await db.execute({ sql, args });
+    const seats = seatsRes.rows as any[];
 
     return (
         <>

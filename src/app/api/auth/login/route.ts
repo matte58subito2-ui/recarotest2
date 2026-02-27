@@ -12,7 +12,11 @@ export async function POST(request: NextRequest) {
         }
 
         const db = getDb();
-        const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+        const userRes = await db.execute({
+            sql: 'SELECT * FROM users WHERE username = ?',
+            args: [username]
+        });
+        const user = userRes.rows[0] as any;
 
         if (!user || !bcrypt.compareSync(password, user.password_hash)) {
             return NextResponse.json({ error: 'Username o password non validi' }, { status: 401 });
@@ -25,14 +29,20 @@ export async function POST(request: NextRequest) {
 
         // --- Fingerprinting Logic ---
         if (visitorId) {
-            const fingerprints = db.prepare('SELECT * FROM user_fingerprints WHERE user_id = ?').all(user.id) as any[];
+            const fingerprintsRes = await db.execute({
+                sql: 'SELECT * FROM user_fingerprints WHERE user_id = ?',
+                args: [user.id]
+            });
+            const fingerprints = fingerprintsRes.rows as any[];
 
             const isAuthorized = fingerprints.some(f => f.fingerprint === visitorId);
 
             if (fingerprints.length === 0) {
                 // First device: auto-authorize
-                db.prepare('INSERT INTO user_fingerprints (user_id, fingerprint, label) VALUES (?, ?, ?)')
-                    .run(user.id, visitorId, 'Primary Device');
+                await db.execute({
+                    sql: 'INSERT INTO user_fingerprints (user_id, fingerprint, label) VALUES (?, ?, ?)',
+                    args: [user.id, visitorId, 'Primary Device']
+                });
                 console.log(`[AUTH] First device authorized for ${username}: ${visitorId}`);
             } else if (!isAuthorized) {
                 // New device: trigger OTP
@@ -40,10 +50,15 @@ export async function POST(request: NextRequest) {
                 const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
 
                 // Delete old OTPs for this user
-                db.prepare('DELETE FROM otp_verifications WHERE user_id = ?').run(user.id);
+                await db.execute({
+                    sql: 'DELETE FROM otp_verifications WHERE user_id = ?',
+                    args: [user.id]
+                });
 
-                db.prepare('INSERT INTO otp_verifications (user_id, fingerprint, otp_code, expires_at) VALUES (?, ?, ?, ?)')
-                    .run(user.id, visitorId, otp, expiresAt);
+                await db.execute({
+                    sql: 'INSERT INTO otp_verifications (user_id, fingerprint, otp_code, expires_at) VALUES (?, ?, ?, ?)',
+                    args: [user.id, visitorId, otp, expiresAt]
+                });
 
                 console.log(`\n--- [SECURITY ALERT] ---`);
                 console.log(`New device detected for user: ${username}`);
@@ -58,12 +73,14 @@ export async function POST(request: NextRequest) {
                 });
             } else {
                 // Update last used
-                db.prepare('UPDATE user_fingerprints SET last_used = (datetime(\'now\')) WHERE user_id = ? AND fingerprint = ?')
-                    .run(user.id, visitorId);
+                await db.execute({
+                    sql: 'UPDATE user_fingerprints SET last_used = (datetime(\'now\')) WHERE user_id = ? AND fingerprint = ?',
+                    args: [user.id, visitorId]
+                });
             }
         }
 
-        const token = signToken({ id: user.id, username: user.username, role: user.role });
+        const token = signToken({ id: Number(user.id), username: user.username as string, role: user.role as string });
 
         const response = NextResponse.json({ ok: true, role: user.role });
         response.cookies.set(COOKIE_NAME, token, {

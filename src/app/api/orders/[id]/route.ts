@@ -13,7 +13,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const db = getDb();
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(params.id)) as any;
+    const orderRes = await db.execute({
+        sql: 'SELECT * FROM orders WHERE id = ?',
+        args: [Number(params.id)]
+    });
+    const order = orderRes.rows[0];
     if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     // If no session but there's a guest cookie, make sure this order is actually a guest order
@@ -21,14 +25,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const config = JSON.parse(order.config_json);
+    const config = JSON.parse(order.config_json as string);
 
     return NextResponse.json({
-        id: order.id,
-        order_number: order.order_number,
-        total_price: order.total_price,
-        status: order.status,
-        created_at: order.created_at,
+        id: Number(order.id),
+        order_number: order.order_number as string,
+        total_price: Number(order.total_price),
+        status: order.status as string,
+        created_at: order.created_at as string,
         config,
     });
 }

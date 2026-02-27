@@ -12,7 +12,9 @@ interface Order {
     config_json: string;
 }
 
-export default function OrdersPage() {
+import { Suspense } from 'react';
+
+function OrdersPageContent() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const searchParams = useSearchParams();
@@ -90,5 +92,13 @@ export default function OrdersPage() {
                 </table>
             )}
         </div>
+    );
+}
+
+export default function OrdersPage() {
+    return (
+        <Suspense fallback={<div>Loading orders...</div>}>
+            <OrdersPageContent />
+        </Suspense>
     );
 }

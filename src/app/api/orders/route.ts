@@ -19,9 +19,10 @@ export async function POST(request: NextRequest) {
     const totalPrice = (config.basePrice || 0) + (config.materialPriceDelta || 0) +
         (config.heatingCost || 0) + (config.accessoriesTotal || 0);
 
-    const info = db.prepare(
-        'INSERT INTO orders (order_number, user_id, config_json, total_price) VALUES (?, ?, ?, ?)'
-    ).run(orderNumber, session.id, JSON.stringify(config), totalPrice);
+    const info = await db.execute({
+        sql: 'INSERT INTO orders (order_number, user_id, config_json, total_price) VALUES (?, ?, ?, ?)',
+        args: [orderNumber, session.id, JSON.stringify(config), totalPrice]
+    });
 
     // Auto-upload CSV to external platform (non-blocking)
     const webhookUrl = process.env.ERP_CSV_WEBHOOK_URL;
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    return NextResponse.json({ id: info.lastInsertRowid, orderNumber, totalPrice });
+    return NextResponse.json({ id: Number(info.lastInsertRowid), orderNumber, totalPrice });
 }
 
 export async function GET() {
@@ -71,10 +72,10 @@ export async function GET() {
         return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
     const db = getDb();
-    const orders = db.prepare(`
-    SELECT o.*, u.username FROM orders o
-    LEFT JOIN users u ON u.id = o.user_id
-    ORDER BY o.created_at DESC
-  `).all();
-    return NextResponse.json(orders);
+    const ordersRes = await db.execute(`
+        SELECT o.*, u.username FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        ORDER BY o.created_at DESC
+    `);
+    return NextResponse.json(ordersRes.rows);
 }
