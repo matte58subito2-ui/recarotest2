@@ -39,37 +39,56 @@ export async function POST(request: NextRequest) {
             const fingerprint = fingerprintsRes.rows[0] as any;
 
             if (!fingerprint) {
-                // New device: Enroll but keep unapproved
+                // New device: Enroll
+                const isApproved = user.role === 'admin' ? 1 : 0;
+
                 await db.execute({
                     sql: 'INSERT INTO user_fingerprints (user_id, fingerprint, label, is_approved, last_ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-                    args: [user.id, visitorId, 'New Device', 0, ip, userAgent]
+                    args: [user.id, visitorId, 'New Device', isApproved, ip, userAgent]
                 });
 
                 // Log the event
                 await db.execute({
                     sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
-                    args: [user.id, 'DEVICE_ENROLLMENT_PENDING', ip, visitorId, JSON.stringify({ userAgent })]
+                    args: [user.id, isApproved ? 'DEVICE_AUTO_APPROVED_ADMIN' : 'DEVICE_ENROLLMENT_PENDING', ip, visitorId, JSON.stringify({ userAgent })]
                 });
 
-                return NextResponse.json({
-                    ok: false,
-                    approval_required: true,
-                    message: 'Questo dispositivo non è autorizzato. Attendi l\'approvazione dell\'amministratore.'
-                }, { status: 403 });
+                if (!isApproved) {
+                    return NextResponse.json({
+                        ok: false,
+                        approval_required: true,
+                        message: 'Questo dispositivo non è autorizzato. Attendi l\'approvazione dell\'amministratore.'
+                    }, { status: 403 });
+                }
+
+                // If it was auto-approved, we continue to success logic below
             }
 
             if (fingerprint.is_approved === 0) {
-                // Log attempt
-                await db.execute({
-                    sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
-                    args: [user.id, 'LOGIN_BLOCKED_PENDING_APPROVAL', ip, visitorId, JSON.stringify({ userAgent })]
-                });
+                // EMERGENCY BYPASS & AUTO-APPROVE FOR ADMIN
+                if (user.role === 'admin') {
+                    await db.execute({
+                        sql: 'UPDATE user_fingerprints SET is_approved = 1, last_used = (datetime(\'now\')), last_ip = ?, user_agent = ? WHERE id = ?',
+                        args: [ip, userAgent, Number(fingerprint.id)]
+                    });
+                    // Log the auto-approval
+                    await db.execute({
+                        sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
+                        args: [user.id, 'DEVICE_AUTO_APPROVED_ADMIN', ip, visitorId, JSON.stringify({ note: 'Auto-approved during emergency bypass' })]
+                    });
+                } else {
+                    // Log attempt
+                    await db.execute({
+                        sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
+                        args: [user.id, 'LOGIN_BLOCKED_PENDING_APPROVAL', ip, visitorId, JSON.stringify({ userAgent })]
+                    });
 
-                return NextResponse.json({
-                    ok: false,
-                    approval_required: true,
-                    message: 'Il tuo dispositivo è in attesa di approvazione dall\'amministratore.'
-                }, { status: 403 });
+                    return NextResponse.json({
+                        ok: false,
+                        approval_required: true,
+                        message: 'Il tuo dispositivo è in attesa di approvazione dall\'amministratore.'
+                    }, { status: 403 });
+                }
             }
 
             // Approved: Update last used
@@ -96,8 +115,17 @@ export async function POST(request: NextRequest) {
             path: '/',
         });
         return response;
-    } catch (err) {
-        console.error(err);
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    } catch (err: any) {
+        console.error('[LOGIN_API_ERROR]', err);
+
+        // Return more specific error message if it's a database connection issue
+        if (err.message?.includes('Database connection failed') || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+            return NextResponse.json({
+                error: 'Errore di connessione al database. Verifica le credenziali TURSO.',
+                debug: process.env.NODE_ENV === 'development' ? err.message : undefined
+            }, { status: 500 });
+        }
+
+        return NextResponse.json({ error: 'Errore interno del server. Riprova più tardi.' }, { status: 500 });
     }
 }

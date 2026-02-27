@@ -8,10 +8,17 @@ export function getDb(): Client {
   const url = process.env.TURSO_DATABASE_URL || `file:${process.cwd()}/data/recaro.db`;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  client = createClient({
-    url,
-    authToken,
-  });
+  try {
+    client = createClient({
+      url,
+      authToken,
+    });
+    // We don't execute a query here because it might be expensive on setiap getDb call, 
+    // but the client initialization is now guarded.
+  } catch (err) {
+    console.error('Failed to initialize database client:', err);
+    throw new Error('Database connection failed. Please check environment variables.');
+  }
 
   return client;
 }
