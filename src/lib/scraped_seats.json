@@ -1,0 +1,58 @@
+[
+  {
+    "model_name": "RECARO ORTHOPED",
+    "slug": "orthoped",
+    "description": "Sedile originale RECARO serie City. Elevati standard di sicurezza e comfort.",
+    "category": "City",
+    "image_url": "/seats/orthoped.jpg",
+    "base_price": 1912
+  },
+  {
+    "model_name": "RECARO EXPERT",
+    "slug": "expert",
+    "description": "Sedile originale RECARO serie City. Elevati standard di sicurezza e comfort.",
+    "category": "City",
+    "image_url": "/seats/expert.png",
+    "base_price": 1409
+  },
+  {
+    "model_name": "RECARO POLE POSITION NG FIA",
+    "slug": "pole-position-ng-fia",
+    "description": "Sedile originale RECARO serie Racing. Elevati standard di sicurezza e comfort.",
+    "category": "Racing",
+    "image_url": "/seats/pole-position-ng-fia.png",
+    "base_price": 2230
+  },
+  {
+    "model_name": "RECARO PROFI",
+    "slug": "profi",
+    "description": "Sedile originale RECARO serie Racing. Elevati standard di sicurezza e comfort.",
+    "category": "Racing",
+    "image_url": "/seats/profi.png",
+    "base_price": 2554
+  },
+  {
+    "model_name": "RECARO PRO RACER",
+    "slug": "pro-racer",
+    "description": "Sedile originale RECARO serie Racing. Elevati standard di sicurezza e comfort.",
+    "category": "Racing",
+    "image_url": "/seats/pro-racer.png",
+    "base_price": 2692
+  },
+  {
+    "model_name": "RECARO PODIUM CF",
+    "slug": "podium-cf",
+    "description": "Sedile originale RECARO serie Racing. Elevati standard di sicurezza e comfort.",
+    "category": "Racing",
+    "image_url": "/seats/podium-cf.png",
+    "base_price": 2257
+  },
+  {
+    "model_name": "RECARO SPORTSTER CS",
+    "slug": "sportster-cs",
+    "description": "Sedile originale RECARO serie Sport. Elevati standard di sicurezza e comfort.",
+    "category": "Sport",
+    "image_url": "/seats/sportster-cs.png",
+    "base_price": 970
+  }
+]

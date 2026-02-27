@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from 'next/server';
+import getDb from '@/lib/db';
+import { getSession } from '@/lib/auth';
+import { cookies } from 'next/headers';
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+    const session = await getSession();
+    const guestCookie = cookies().get('guest_lead');
+
+    // We allow access if session exists, OR if it's a guest with a valid cookie
+    if (!session && !guestCookie) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const db = getDb();
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(params.id)) as any;
+    if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // If no session but there's a guest cookie, make sure this order is actually a guest order
+    if (!session && order.user_id !== null) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const config = JSON.parse(order.config_json);
+
+    return NextResponse.json({
+        id: order.id,
+        order_number: order.order_number,
+        total_price: order.total_price,
+        status: order.status,
+        created_at: order.created_at,
+        config,
+    });
+}

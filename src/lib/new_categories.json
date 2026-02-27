@@ -1,0 +1,146 @@
+[
+  {
+    "model_name": "RECARO Podium CF",
+    "slug": "recaro-podium-cf",
+    "description": "Pioneer design for uncompromising performance on track and road.",
+    "category": "Motorsport",
+    "image_url": "/seats/recaro-podium-cf.png",
+    "base_price": 1660
+  },
+  {
+    "model_name": "RECARO Podium GF",
+    "slug": "recaro-podium-gf",
+    "description": "On track and road, offering a perfect balance of comfort and support.",
+    "category": "Motorsport",
+    "image_url": "/seats/recaro-podium-gf.png",
+    "base_price": 2290
+  },
+  {
+    "model_name": "RECARO Profi SPG",
+    "slug": "recaro-profi-spg",
+    "description": "Premium hold in all positions, a favorite among professional racers.",
+    "category": "Motorsport",
+    "image_url": "/seats/recaro-profi-spg.png",
+    "base_price": 3009
+  },
+  {
+    "model_name": "RECARO Pro Racer SPG & SPA",
+    "slug": "recaro-pro-racer-spg-spa",
+    "description": "Developed for professionals who want to win, with maximum safety.",
+    "category": "Motorsport",
+    "image_url": "/seats/recaro-pro-racer-spg-spa.png",
+    "base_price": 2287
+  },
+  {
+    "model_name": "RECARO Pole Position N.G. (FIA)",
+    "slug": "recaro-pole-position-n-g-fia-",
+    "description": "For immediate victories, providing excellent lateral support.",
+    "category": "Motorsport",
+    "image_url": "/seats/recaro-pole-position-n-g-fia-.png",
+    "base_price": 1582
+  },
+  {
+    "model_name": "RECARO Stadium Seat (Player)",
+    "slug": "recaro-stadium-seat-player-",
+    "description": "Professional dugout seating for champions and players.",
+    "category": "Stadium",
+    "image_url": "/seats/recaro-stadium-seat-player-.jpg",
+    "base_price": 1957
+  },
+  {
+    "model_name": "RECARO Stadium Seat (Nagai)",
+    "slug": "recaro-stadium-seat-nagai-",
+    "description": "High-performance stadium seating solution for international arenas.",
+    "category": "Stadium",
+    "image_url": "/seats/recaro-stadium-seat-nagai-.jpg",
+    "base_price": 1217
+  },
+  {
+    "model_name": "RECARO Stadium Seat (Leipzig)",
+    "slug": "recaro-stadium-seat-leipzig-",
+    "description": "Ergonomic benches designed for maximum comfort during the game.",
+    "category": "Stadium",
+    "image_url": "/seats/recaro-stadium-seat-leipzig-.jpg",
+    "base_price": 1531
+  },
+  {
+    "model_name": "RECARO Stadium Seat (Public)",
+    "slug": "recaro-stadium-seat-public-",
+    "description": "Durable and comfortable seating for every spectator in the stands.",
+    "category": "Stadium",
+    "image_url": "/seats/recaro-stadium-seat-public-.jpg",
+    "base_price": 2362
+  },
+  {
+    "model_name": "RECARO Stadium Seat (VIP)",
+    "slug": "recaro-stadium-seat-vip-",
+    "description": "Customized premium seating with luxury branding and materials.",
+    "category": "Stadium",
+    "image_url": "/seats/recaro-stadium-seat-vip-.jpg",
+    "base_price": 2588
+  },
+  {
+    "model_name": "RECARO Ergomed E",
+    "slug": "recaro-ergomed-e",
+    "description": "Arrive fresh with perfect ergonomics and classic design.",
+    "category": "Comfort",
+    "image_url": "/seats/recaro-ergomed-e.png",
+    "base_price": 1665
+  },
+  {
+    "model_name": "RECARO Expert",
+    "slug": "recaro-expert",
+    "description": "The expert in car seating, highly adaptable for personal needs.",
+    "category": "Comfort",
+    "image_url": "/seats/recaro-expert.png",
+    "base_price": 1598
+  },
+  {
+    "model_name": "RECARO Specialist",
+    "slug": "recaro-specialist",
+    "description": "Specialist in adaptation needs with a slim, modular design.",
+    "category": "Comfort",
+    "image_url": "/seats/recaro-specialist.png",
+    "base_price": 1245
+  },
+  {
+    "model_name": "RECARO Maritime Bridge Seat",
+    "slug": "recaro-maritime-bridge-seat",
+    "description": "Sit relaxed and enjoy the result on the high seas.",
+    "category": "Nautic",
+    "image_url": "/seats/recaro-maritime-bridge-seat.jpg",
+    "base_price": 3127
+  },
+  {
+    "model_name": "RECARO Maritime Atlantic",
+    "slug": "recaro-maritime-atlantic",
+    "description": "Premium luxury seating for yacht bridges and vessel control.",
+    "category": "Nautic",
+    "image_url": "/seats/recaro-maritime-atlantic.jpg",
+    "base_price": 3192
+  },
+  {
+    "model_name": "RECARO Maritime Caspian",
+    "slug": "recaro-maritime-caspian",
+    "description": "Durable maritime seating for professional boat operations.",
+    "category": "Nautic",
+    "image_url": "/seats/recaro-maritime-caspian.jpg",
+    "base_price": 2406
+  },
+  {
+    "model_name": "RECARO Maritime North Coast",
+    "slug": "recaro-maritime-north-coast",
+    "description": "Ergonomic maritime solution for offshore and coastal navigation.",
+    "category": "Nautic",
+    "image_url": "/seats/recaro-maritime-north-coast.jpg",
+    "base_price": 2574
+  },
+  {
+    "model_name": "RECARO Maritime Offshore",
+    "slug": "recaro-maritime-offshore",
+    "description": "Ultimate comfort and stability in the most challenging sea conditions.",
+    "category": "Nautic",
+    "image_url": "/seats/recaro-maritime-offshore.jpg",
+    "base_price": 2735
+  }
+]
