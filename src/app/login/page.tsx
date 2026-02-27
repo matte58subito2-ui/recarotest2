@@ -61,9 +61,9 @@ export default function LoginPage() {
 
             // Success
             if (data.role === 'admin') {
-                router.push('/admin');
+                router.push('/');
             } else {
-                router.push('/catalog');
+                router.push('/');
             }
         } catch {
             setError('Server error. Please try again.');

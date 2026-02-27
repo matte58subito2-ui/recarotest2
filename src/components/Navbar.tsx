@@ -21,7 +21,7 @@ export default function Navbar({ role }: NavbarProps) {
     return (
         <nav className="navbar" style={{ flexDirection: 'column', height: 'auto', padding: '16px 32px', alignItems: 'stretch' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Link href="/catalog" style={{ display: 'flex', alignItems: 'center' }}>
+                <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
                     <Image src="/recaro_logo.png" alt="RECARO Logo" width={140} height={32} style={{ objectFit: 'contain', filter: 'invert(1)' }} />
                 </Link>
                 <div className="navbar-nav">
@@ -39,14 +39,14 @@ export default function Navbar({ role }: NavbarProps) {
                             </span>
                         )}
                     </Link>
+                    {role === 'admin' && (
+                        <Link href="/admin/stats" className={`nav-link ${pathname.startsWith('/admin') ? 'active' : ''}`}>
+                            ⚙️ Pannello di Controllo
+                        </Link>
+                    )}
                     <Link href="/contact" className={`nav-link ${pathname.startsWith('/contact') ? 'active' : ''}`}>
                         ✉️ Contact
                     </Link>
-                    {role === 'admin' && (
-                        <Link href="/admin" className={`nav-link ${pathname.startsWith('/admin') ? 'active' : ''}`}>
-                            ⚙️ Admin
-                        </Link>
-                    )}
                     <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
                         Logout
                     </button>

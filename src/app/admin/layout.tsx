@@ -6,7 +6,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="admin-layout">
             <aside className="admin-sidebar">
                 <div style={{ marginBottom: '32px', padding: '0 16px' }}>
-                    <Image src="/recaro_logo.png" alt="RECARO Logo" width={160} height={36} style={{ objectFit: 'contain' }} />
+                    <Link href="/">
+                        <Image src="/recaro_logo.png" alt="RECARO Logo" width={160} height={36} style={{ objectFit: 'contain', cursor: 'pointer' }} />
+                    </Link>
                 </div>
 
                 <div className="sidebar-section">Management</div>
@@ -38,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </Link>
 
                 <div style={{ marginTop: 'auto', paddingTop: '40px' }}>
-                    <Link href="/catalog" className="btn btn-ghost" style={{ width: '100%' }}>← Back to Catalogue</Link>
+                    <Link href="/" className="btn btn-ghost" style={{ width: '100%' }}>← Back to Home</Link>
                 </div>
             </aside>
             <main className="admin-content">
