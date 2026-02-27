@@ -1,7 +1,11 @@
 import getDb from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
 
 export default async function SyncPage() {
+    headers(); // Force dynamic
     const db = getDb();
     const logsRes = await db.execute('SELECT * FROM sync_logs ORDER BY created_at DESC LIMIT 50');
     const logs = logsRes.rows;
