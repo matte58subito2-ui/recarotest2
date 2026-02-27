@@ -125,8 +125,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
                         {seats.length === 0 ? (
                             <div className="empty-state card" style={{ padding: '80px 20px', background: 'transparent' }}>
                                 <div className="empty-icon" style={{ fontSize: '64px', marginBottom: '24px', opacity: 0.5 }}>🪑</div>
-                                <h3 className="empty-title">Nessun modello trovato</h3>
-                                <p className="empty-desc">Non ci sono sedili disponibili nella categoria {selectedCat}.</p>
+                                <h3 className="empty-title">No models found</h3>
+                                <p className="empty-desc">No seats available in the {selectedCat} category.</p>
                             </div>
                         ) : (
                             <div className="grid-3">
@@ -177,8 +177,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
                                             <div className="divider" style={{ margin: '16px 0', opacity: 0.5 }}></div>
                                             <div className="seat-card-footer">
                                                 <div>
-                                                    <div className="seat-card-price-label">Prezzo base</div>
-                                                    <div className="seat-card-price" style={{ fontSize: '20px' }}>€ {seat.base_price.toLocaleString('it-IT')}</div>
+                                                    <div className="seat-card-price-label">Base price</div>
+                                                    <div className="seat-card-price" style={{ fontSize: '20px' }}>€ {seat.base_price.toLocaleString('en-US')}</div>
                                                 </div>
                                                 <div className="btn btn-primary btn-sm" style={{ borderRadius: '20px', padding: '6px 16px' }}>
                                                     Configure
@@ -211,10 +211,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
                         </div>
                         <div>
                             <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>
-                                Sfoglia il Catalogo
+                                Browse the Catalog
                             </h3>
                             <p style={{ maxWidth: '300px', margin: '0 auto', fontSize: '14px' }}>
-                                Seleziona una delle divisioni RECARO qui sopra per visualizzare i modelli disponibili.
+                                Select one of the RECARO divisions above to view available models.
                             </p>
                         </div>
                     </div>

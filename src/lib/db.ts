@@ -59,115 +59,113 @@ export async function initSchema() {
   if (!columns.includes('address')) {
     await db.execute("ALTER TABLE users ADD COLUMN address TEXT");
   }
-  if (columns.includes('is_active')) {
+  if (!columns.includes('is_active')) {
     await db.execute("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0");
   }
   if (!columns.includes('revoked_all_at')) {
     await db.execute("ALTER TABLE users ADD COLUMN revoked_all_at TEXT");
   }
 
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS ip_whitelist (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ip_address TEXT UNIQUE NOT NULL,
-      label TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS ip_whitelist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT UNIQUE NOT NULL,
+    label TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
 
-    CREATE TABLE IF NOT EXISTS seats (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      model_name TEXT NOT NULL,
-      slug TEXT UNIQUE NOT NULL,
-      description TEXT,
-      category TEXT,
-      base_price REAL NOT NULL DEFAULT 0,
-      image_url TEXT,
-      active INTEGER NOT NULL DEFAULT 1
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS seats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model_name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    description TEXT,
+    category TEXT,
+    base_price REAL NOT NULL DEFAULT 0,
+    image_url TEXT,
+    active INTEGER NOT NULL DEFAULT 1
+  )`);
 
-    CREATE TABLE IF NOT EXISTS seat_materials (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      seat_id INTEGER NOT NULL,
-      material TEXT NOT NULL,
-      colors TEXT NOT NULL,
-      price_delta REAL NOT NULL DEFAULT 0
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS seat_materials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seat_id INTEGER NOT NULL,
+    material TEXT NOT NULL,
+    colors TEXT NOT NULL,
+    price_delta REAL NOT NULL DEFAULT 0
+  )`);
 
-    CREATE TABLE IF NOT EXISTS seat_accessories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      seat_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      description TEXT,
-      price REAL NOT NULL DEFAULT 0
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS seat_accessories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seat_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL DEFAULT 0
+  )`);
 
-    CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      order_number TEXT UNIQUE NOT NULL,
-      user_id INTEGER,
-      config_json TEXT NOT NULL,
-      total_price REAL NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'pending',
-      created_at TEXT DEFAULT (datetime('now'))
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_number TEXT UNIQUE NOT NULL,
+    user_id INTEGER,
+    config_json TEXT NOT NULL,
+    total_price REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
 
-    CREATE TABLE IF NOT EXISTS user_fingerprints (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      fingerprint TEXT NOT NULL,
-      label TEXT,
-      is_approved INTEGER NOT NULL DEFAULT 0,
-      last_ip TEXT,
-      user_agent TEXT,
-      last_used TEXT DEFAULT (datetime('now')),
-      UNIQUE(user_id, fingerprint)
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS user_fingerprints (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    fingerprint TEXT NOT NULL,
+    label TEXT,
+    is_approved INTEGER NOT NULL DEFAULT 0,
+    last_ip TEXT,
+    user_agent TEXT,
+    last_used TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, fingerprint)
+  )`);
 
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      action TEXT NOT NULL,
-      ip_address TEXT,
-      device_id TEXT,
-      details TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    action TEXT NOT NULL,
+    ip_address TEXT,
+    device_id TEXT,
+    details TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
 
-    CREATE TABLE IF NOT EXISTS password_resets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      token TEXT UNIQUE NOT NULL,
-      expires_at TEXT NOT NULL,
-      used_at TEXT
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT
+  )`);
 
-    CREATE TABLE IF NOT EXISTS revoked_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      jti TEXT UNIQUE NOT NULL,
-      expires_at TEXT NOT NULL
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS revoked_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    jti TEXT UNIQUE NOT NULL,
+    expires_at TEXT NOT NULL
+  )`);
 
-    CREATE TABLE IF NOT EXISTS otp_verifications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      fingerprint TEXT NOT NULL,
-      otp_code TEXT NOT NULL,
-      expires_at TEXT NOT NULL
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS otp_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    fingerprint TEXT NOT NULL,
+    otp_code TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  )`);
 
-    CREATE TABLE IF NOT EXISTS sync_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      source TEXT NOT NULL,
-      status TEXT NOT NULL,
-      message TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
+  await db.execute(`CREATE TABLE IF NOT EXISTS sync_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    status TEXT NOT NULL,
+    message TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
 
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
+  await db.execute(`CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
 
   // Evolve user_fingerprints
   const fingerRes = await db.execute("PRAGMA table_info(user_fingerprints)");

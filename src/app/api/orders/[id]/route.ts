@@ -7,10 +7,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const session = await getSession();
     const guestCookie = cookies().get('guest_lead');
 
-    // We allow access if session exists, OR if it's a guest with a valid cookie
-    if (!session && !guestCookie) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const db = getDb();
     const orderRes = await db.execute({

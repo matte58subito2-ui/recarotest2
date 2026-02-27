@@ -10,6 +10,9 @@ interface OrderData {
     status: string;
     created_at: string;
     config: {
+        isCart?: boolean;
+        items?: any[];
+        totalPrice?: number;
         seatName?: string;
         category?: string;
         material?: string;
@@ -156,59 +159,111 @@ export default function OrderConfirmationPage({ params }: { params: { id: string
                     )}
 
                     {/* Configuration Summary Card */}
-                    <div className="card" style={{ padding: '28px', marginBottom: '32px' }}>
-                        <h3 style={{ fontSize: '16px', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--red)', marginBottom: '24px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
-                            Configuration Summary
-                        </h3>
+                    {config.isCart ? (
+                        <div className="flex flex-col gap-6 mb-8">
+                            <h3 style={{ fontSize: '16px', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--red)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                                Cart Items Summary
+                            </h3>
+                            {config.items?.map((item: any, idx: number) => (
+                                <div key={item.id || idx} className="card" style={{ padding: '24px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                                    <div style={{ fontWeight: 800, fontSize: '18px', marginBottom: '16px', color: 'var(--text)' }}>
+                                        {idx + 1}. {item.productName} <span style={{ color: 'var(--red-light)', fontSize: '14px', marginLeft: '8px' }}>({item.categoryId})</span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
+                                        <div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Material</div>
+                                            <div style={{ fontWeight: 600 }}>{item.material || '—'}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Color</div>
+                                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: item.colorHex, display: 'inline-block', border: '1px solid rgba(255,255,255,0.2)' }}></span>
+                                                {item.colorHex}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Heating</div>
+                                            <div style={{ fontWeight: 600 }}>{item.heating ? '✅ Yes' : 'No'}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Logo Position</div>
+                                            <div style={{ fontWeight: 600 }}>{item.logoPosition || '—'}</div>
+                                        </div>
+                                    </div>
+                                    {item.accessories && item.accessories.length > 0 && (
+                                        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                                            <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '8px' }}>Accessories</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                {item.accessories.map((a: string, i: number) => (
+                                                    <span key={i} className="badge badge-gray">{a}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            <div className="card" style={{ padding: '28px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
+                                    <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--red-light)' }}>€ {order.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="card" style={{ padding: '28px', marginBottom: '32px' }}>
+                            <h3 style={{ fontSize: '16px', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--red)', marginBottom: '24px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+                                Configuration Summary
+                            </h3>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
-                            <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Model</div>
-                                <div style={{ fontWeight: 600 }}>{config.seatName || '—'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Category</div>
-                                <div style={{ fontWeight: 600 }}>{config.category || '—'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Material</div>
-                                <div style={{ fontWeight: 600 }}>{config.material || '—'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Color</div>
-                                <div style={{ fontWeight: 600 }}>{config.color || '—'}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Heating</div>
-                                <div style={{ fontWeight: 600 }}>{config.heating ? '✅ 3-Zone Heating' : '—'}</div>
-                            </div>
-                            {activeLogos.length > 0 && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 32px' }}>
                                 <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Logo Positions</div>
-                                    <div style={{ fontWeight: 600 }}>{activeLogos.join(', ')}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Model</div>
+                                    <div style={{ fontWeight: 600 }}>{config.seatName || '—'}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Category</div>
+                                    <div style={{ fontWeight: 600 }}>{config.category || '—'}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Material</div>
+                                    <div style={{ fontWeight: 600 }}>{config.material || '—'}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Color</div>
+                                    <div style={{ fontWeight: 600 }}>{config.color || '—'}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Heating</div>
+                                    <div style={{ fontWeight: 600 }}>{config.heating ? '✅ 3-Zone Heating' : '—'}</div>
+                                </div>
+                                {activeLogos.length > 0 && (
+                                    <div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '4px' }}>Logo Positions</div>
+                                        <div style={{ fontWeight: 600 }}>{activeLogos.join(', ')}</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {config.accessories && config.accessories.length > 0 && (
+                                <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '8px' }}>Accessories</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {config.accessories.map((a, i) => (
+                                            <span key={i} className="badge badge-gray">{a}</span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
-                        </div>
 
-                        {config.accessories && config.accessories.length > 0 && (
-                            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '8px' }}>Accessories</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                    {config.accessories.map((a, i) => (
-                                        <span key={i} className="badge badge-gray">{a}</span>
-                                    ))}
+                            {/* Price Summary */}
+                            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '2px solid var(--red)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
+                                    <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--red-light)' }}>€ {order.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             </div>
-                        )}
-
-                        {/* Price Summary */}
-                        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '2px solid var(--red)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '16px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Total</span>
-                                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--red-light)' }}>€ {order.total_price?.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Download PDF Button */}
                     <a

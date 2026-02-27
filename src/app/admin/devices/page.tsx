@@ -119,14 +119,14 @@ export default async function DevicesPage() {
                                             </button>
                                         </form>
 
-                                        <form action={revokeAllUserSessions} onSubmit={(e) => { if (!confirm('Are you sure you want to log out this user from ALL devices?')) e.preventDefault(); }}>
+                                        <form action={revokeAllUserSessions}>
                                             <input type="hidden" name="userId" value={d.user_id} />
                                             <button type="submit" className="btn btn-sm btn-danger">
                                                 Kill All
                                             </button>
                                         </form>
 
-                                        <form action={deleteDevice} onSubmit={(e) => { if (!confirm('Delete device record?')) e.preventDefault(); }}>
+                                        <form action={deleteDevice}>
                                             <input type="hidden" name="id" value={d.id} />
                                             <button type="submit" className="btn btn-sm btn-ghost" style={{ color: '#888' }}>
                                                 Delete

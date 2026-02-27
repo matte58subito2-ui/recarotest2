@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
         const db = getDb();
         const userRes = await db.execute({
-            sql: 'SELECT * FROM users WHERE username = ?',
-            args: [username]
+            sql: 'SELECT * FROM users WHERE username = ? OR email = ?',
+            args: [username, username]
         });
         const user = userRes.rows[0] as any;
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
                 sql: 'SELECT * FROM user_fingerprints WHERE user_id = ? AND fingerprint = ?',
                 args: [user.id, visitorId]
             });
-            const fingerprint = fingerprintsRes.rows[0] as any;
+            let fingerprint = fingerprintsRes.rows[0] as any;
 
             if (!fingerprint) {
                 // New device: Enroll
@@ -61,10 +61,9 @@ export async function POST(request: NextRequest) {
                     }, { status: 403 });
                 }
 
-                // If it was auto-approved, we continue to success logic below
-            }
-
-            if (fingerprint.is_approved === 0) {
+                // Admin auto-enrolled: set fingerprint so the flow continues
+                fingerprint = { is_approved: 1 };
+            } else if (fingerprint.is_approved === 0) {
                 // EMERGENCY BYPASS & AUTO-APPROVE FOR ADMIN
                 if (user.role === 'admin') {
                     await db.execute({
@@ -89,13 +88,13 @@ export async function POST(request: NextRequest) {
                         message: 'Il tuo dispositivo è in attesa di approvazione dall\'amministratore.'
                     }, { status: 403 });
                 }
+            } else {
+                // Approved: Update last used
+                await db.execute({
+                    sql: 'UPDATE user_fingerprints SET last_used = (datetime(\'now\')), last_ip = ?, user_agent = ? WHERE id = ?',
+                    args: [ip, userAgent, Number(fingerprint.id)]
+                });
             }
-
-            // Approved: Update last used
-            await db.execute({
-                sql: 'UPDATE user_fingerprints SET last_used = (datetime(\'now\')), last_ip = ?, user_agent = ? WHERE id = ?',
-                args: [ip, userAgent, Number(fingerprint.id)]
-            });
         }
 
         // --- Success Logic ---
@@ -116,7 +115,12 @@ export async function POST(request: NextRequest) {
         });
         return response;
     } catch (err: any) {
-        console.error('[LOGIN_API_ERROR]', err);
+        console.error('[LOGIN_API_ERROR_FULL]', {
+            message: err.message,
+            stack: err.stack,
+            code: err.code,
+            details: err
+        });
 
         // Return more specific error message if it's a database connection issue
         if (err.message?.includes('Database connection failed') || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
@@ -126,6 +130,9 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        return NextResponse.json({ error: 'Errore interno del server. Riprova più tardi.' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Errore interno del server. Riprova più tardi.',
+            debug: process.env.NODE_ENV === 'development' ? err.message : undefined
+        }, { status: 500 });
     }
 }

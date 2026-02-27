@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
+import { useCartStore } from '@/store/useCartStore';
 import '@google/model-viewer';
 
 declare global {
@@ -26,25 +27,25 @@ interface SeatData {
 }
 
 const COLOR_MAP: Record<string, string> = {
-    'Nero': '#111111',
-    'Grigio Antracite': '#333333',
-    'Grigio': '#7f8c8d',
-    'Grigio Melange': '#95a5a6',
-    'Rosso Fuoco': '#c0392b',
-    'Rosso Sport': '#e74c3c',
-    'Marrone Cognac': '#d35400',
-    'Beige Sabbia': '#f5deb3',
-    'Blu Notte': '#2c3e50',
-    'Blu Racing': '#2980b9',
-    'Verde Militare': '#556b2f',
-    'Bianco Perlato': '#fdfbf7',
-    'Arancione Fluo': '#e67e22',
+    'Black': '#1a1a1a', // Premium black leather
+    'Anthracite Grey': '#363636', // Alcantara Grey
+    'Grey': '#71717a',
+    'Melange Grey': '#8c8c8c',
+    'Fire Red': '#c41e1e', // Classic RECARO Red
+    'Sport Red': '#ff3b3b',
+    'Cognac Brown': '#9a5c32', // Luxury Cognac
+    'Sand Beige': '#e6d5c3',
+    'Midnight Blue': '#1e293b',
+    'Racing Blue': '#2563eb',
+    'Military Green': '#4d5c48',
+    'Pearl White': '#f8fafc',
+    'Fluo Orange': '#f97316',
 };
 
 const STADIUM_COLORS = [
-    { name: 'Rosso Fuoco', hex: '#c0392b', rgb: [0.75, 0.22, 0.17] },
-    { name: 'Nero', hex: '#111111', rgb: [0.07, 0.07, 0.07] },
-    { name: 'Bianco Perlato', hex: '#fdfbf7', rgb: [0.99, 0.98, 0.97] },
+    { name: 'Classico RECARO Red', hex: '#c41e1e', rgb: [0.77, 0.12, 0.12] },
+    { name: 'Carbon Black', hex: '#111111', rgb: [0.07, 0.07, 0.07] },
+    { name: 'Pure White', hex: '#fdfbf7', rgb: [0.99, 0.98, 0.97] },
 ];
 
 export default function ConfiguratorPage({ params }: { params: { id: string } }) {
@@ -60,7 +61,12 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
     const [heating, setHeating] = useState(false);
     const [accessories, setAccessories] = useState<Record<number, boolean>>({});
 
-    const [saving, setSaving] = useState(false);
+    // Logo Upload
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [logoPosition, setLogoPosition] = useState<'Headrest' | 'Backrest' | 'Rear Shell'>('Headrest');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const addItem = useCartStore((state) => state.addItem);
     const modelRef = useRef<any>(null);
 
     // Apply color to the 3D model
@@ -112,244 +118,361 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
         return t;
     };
 
-    const handleGenerateOrder = async () => {
-        setSaving(true);
-        const orderData = {
-            seatId: data.id,
-            seatName: data.model_name,
-            category: data.category,
-            basePrice: data.base_price,
+    const handleAddToCart = () => {
+        const finalColorHex = data.category === 'Stadium' ? stadiumColor.hex : (COLOR_MAP[color] || '#000000');
+
+        addItem({
+            categoryId: data.category,
+            productName: data.model_name,
+            colorHex: finalColorHex,
+            logoBlob: logoPreview,
+            logoPosition: logoPreview ? logoPosition : null,
+            price: calcTotal(),
             material: material?.name,
-            materialPriceDelta: material?.price,
-            color: data.category === 'Stadium' ? stadiumColor.name : color,
             heating,
-            heatingCost: heating ? 150 : 0,
             accessories: Object.entries(accessories)
                 .filter(([_, sel]) => sel)
                 .map(([id]) => data.accessories.find(a => a.id === Number(id))?.name)
-                .filter(Boolean),
-            accessoriesTotal: Object.entries(accessories)
-                .filter(([_, sel]) => sel)
-                .reduce((sum, [id]) => sum + (data.accessories.find(a => a.id === Number(id))?.price || 0), 0),
-        };
+                .filter(Boolean) as string[],
+        });
 
-        try {
-            const res = await fetch('/api/orders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData),
-            });
-            const result = await res.json();
-            if (res.ok) {
-                router.push(`/order/${result.id}/confirmation`);
-            } else {
-                alert(result.error);
-                setSaving(false);
-            }
-        } catch {
-            alert('Error generating order');
-            setSaving(false);
-        }
+        alert('Prodotto Configurato aggiunto al carrello!');
+        router.push('/catalog');
     };
 
+    const nextStep = () => setStep(s => Math.min(s + 1, 5));
+    const prevStep = () => setStep(s => Math.max(s - 1, 1));
+
     return (
-        <>
+        <div className="min-h-screen bg-black text-white selection:bg-red-500 selection:text-white flex flex-col">
             <Navbar />
-            <main className="container page">
-                <div style={{ marginBottom: '32px' }}>
-                    <Link href="/catalog" className="btn btn-ghost btn-sm" style={{ marginBottom: '16px' }}>← Back to Catalogue</Link>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+            <main className="flex-1 flex flex-col lg:flex-row w-full max-w-[1920px] mx-auto overflow-hidden h-[calc(100vh-80px)]">
+
+                {/* Left Side: Canvas (70%) */}
+                <div className="w-full lg:w-[70%] bg-[#0a0a0a] relative flex flex-col border-r border-white/10">
+                    <div className="absolute top-8 left-8 z-10">
+                        <Link href="/catalog" className="text-white/50 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium uppercase tracking-wider" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                            Back to Catalogue
+                        </Link>
+                    </div>
+
+                    <div className="absolute top-8 right-8 z-10 text-right">
+                        <div className="inline-block px-3 py-1 bg-red-600/20 text-red-500 text-xs font-bold uppercase tracking-widest rounded-full border border-red-500/30 mb-2">
+                            {data.category}
+                        </div>
+                        <h1 className="text-4xl font-semibold tracking-tighter" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>{data.model_name}</h1>
+                    </div>
+
+                    <div className="flex-1 w-full h-full flex items-center justify-center p-12">
                         {data.category === 'Stadium' ? (
-                            <div style={{ background: '#111', borderRadius: '12px', padding: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '320px', height: '240px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            <div className="w-full h-full max-w-4xl max-h-[70vh] relative">
                                 <model-viewer
                                     ref={modelRef}
                                     src="/models/stadium/slitta.glb"
                                     alt="Stadium Seat 3D"
                                     auto-rotate
                                     camera-controls
-                                    style={{ width: '100%', height: '100%' }}
-                                    shadow-intensity="1"
+                                    style={{ width: '100%', height: '100%', outline: 'none' }}
+                                    shadow-intensity="1.5"
                                     exposure="1.2"
                                     environment-image="neutral"
                                 ></model-viewer>
+
+                                {/* Logo Overlay for Stadium 3D View */}
+                                {logoPreview && (
+                                    <div
+                                        className="absolute z-20 pointer-events-none transition-all duration-500 ease-in-out"
+                                        style={{
+                                            top: logoPosition === 'Headrest' ? '15%' : logoPosition === 'Backrest' ? '40%' : '15%',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: logoPosition === 'Rear Shell' ? '0px' : '100px',
+                                            height: logoPosition === 'Rear Shell' ? '0px' : 'auto',
+                                            opacity: logoPosition === 'Rear Shell' ? 0 : 0.8,
+                                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'
+                                        }}
+                                    >
+                                        <Image src={logoPreview} alt="Custom Logo" width={100} height={100} style={{ objectFit: 'contain' }} />
+                                    </div>
+                                )}
                             </div>
-                        ) : data.image_url && (
-                            <div style={{ background: '#1a1a1a', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '200px', height: '160px' }}>
-                                <Image src={data.image_url} alt={data.model_name} width={160} height={140} style={{ objectFit: 'contain' }} />
+                        ) : data.image_url ? (
+                            <div className="w-full h-full max-w-4xl max-h-[70vh] relative flex items-center justify-center drop-shadow-2xl">
+                                <Image src={data.image_url} alt={data.model_name} fill style={{ objectFit: 'contain' }} priority />
+
+                                {/* Logo Overlay */}
+                                {logoPreview && (
+                                    <div
+                                        className="absolute z-20 pointer-events-none transition-all duration-500 ease-in-out"
+                                        style={{
+                                            top: logoPosition === 'Headrest' ? '15%' : logoPosition === 'Backrest' ? '40%' : '15%',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: logoPosition === 'Rear Shell' ? '0px' : '100px', // Hide on front view if Rear Shell
+                                            height: logoPosition === 'Rear Shell' ? '0px' : 'auto',
+                                            opacity: logoPosition === 'Rear Shell' ? 0 : 0.8,
+                                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))'
+                                        }}
+                                    >
+                                        <Image src={logoPreview} alt="Custom Logo" width={100} height={100} style={{ objectFit: 'contain' }} />
+                                    </div>
+                                )}
                             </div>
+                        ) : (
+                            <div className="text-white/30 text-xl font-medium">No 3D Model Available</div>
                         )}
-                        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                                <div className="badge badge-red" style={{ marginBottom: '8px' }}>{data.category}</div>
-                                <h1 style={{ fontSize: '36px' }}>{data.model_name}</h1>
-                                <div style={{ color: 'var(--text2)', marginTop: '8px', maxWidth: '500px', lineHeight: 1.5 }}>{data.description}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '13px', color: 'var(--text3)' }}>Configuration Total</div>
-                                <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--red-light)' }}>€ {calcTotal().toLocaleString('en-US')}</div>
-                            </div>
+                    </div>
+
+                    <div className="absolute bottom-8 left-8 right-8 z-10">
+                        <div className="flex items-center gap-2 mb-4">
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <div key={i} className={`h-1 flex-1 rounded-full bg-white/10 overflow-hidden`}>
+                                    <div className={`h-full bg-red-600 transition-all duration-500 ${step >= i ? 'w-full' : 'w-0'}`} />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-between items-center text-xs font-medium uppercase tracking-widest text-white/50" style={{ fontFamily: 'var(--font-rajdhani)' }}>
+                            <span>01 / Material</span>
+                            <span>02 / Color</span>
+                            <span>03 / Core</span>
+                            <span>04 / Branding</span>
+                            <span>05 / Add-ons</span>
                         </div>
                     </div>
                 </div>
-                <div className="grid-3">
-                    <div style={{ gridColumn: 'span 2' }}>
-                        {/* Stepper */}
-                        <div className="steps">
-                            <div className={`step ${step === 1 ? 'active' : step > 1 ? 'done' : ''}`} onClick={() => setStep(1)} style={{ cursor: 'pointer' }}>1. Material</div>
-                            <div className={`step ${step === 2 ? 'active' : step > 2 ? 'done' : ''}`} onClick={() => material && setStep(2)} style={{ cursor: material ? 'pointer' : 'default' }}>2. Color</div>
-                            <div className={`step ${step === 3 ? 'active' : step > 3 ? 'done' : ''}`} onClick={() => (color || data.category === 'Stadium') && setStep(3)} style={{ cursor: (color || data.category === 'Stadium') ? 'pointer' : 'default' }}>3. Options</div>
-                            <div className={`step ${step === 4 ? 'active' : step > 4 ? 'done' : ''}`} onClick={() => (color || data.category === 'Stadium') && setStep(4)} style={{ cursor: (color || data.category === 'Stadium') ? 'pointer' : 'default' }}>4. Accessories</div>
-                        </div>
 
-                        <div className="card animate-fade" key={step}>
-                            {step === 1 && (
-                                <div>
-                                    <h2 style={{ marginBottom: '24px' }}>Choose Material</h2>
-                                    <div className="option-grid">
-                                        {data.materials.map(m => (
-                                            <div
-                                                key={m.id}
-                                                className={`option-card ${material?.name === m.material ? 'selected' : ''}`}
-                                                onClick={() => { setMaterial({ name: m.material, price: m.price_delta }); setColor(''); setStep(2); }}
-                                            >
-                                                <div className="icon">🧵</div>
-                                                <div className="label">{m.material}</div>
-                                                <div className="sublabel">{m.price_delta > 0 ? `+ € ${m.price_delta}` : 'Included'}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                {/* Right Side: Sidebar (30%) */}
+                <div className="w-full lg:w-[30%] bg-zinc-950 flex flex-col h-full overflow-hidden">
 
-                            {step === 2 && (
-                                <div>
-                                    <h2 style={{ marginBottom: '8px' }}>Choose Color</h2>
-                                    <p style={{ color: 'var(--text2)', marginBottom: '24px', fontSize: '14px' }}>Available colors for: {material?.name}</p>
-                                    <div className="color-grid">
-                                        {data.category === 'Stadium' ? (
-                                            STADIUM_COLORS.map(c => (
-                                                <div key={c.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                    <div
-                                                        className={`color-swatch ${stadiumColor.name === c.name ? 'selected' : ''}`}
-                                                        style={{ background: c.hex }}
-                                                        title={c.name}
-                                                        onClick={() => { setStadiumColor(c); setStep(3); }}
-                                                    />
-                                                    <div className="color-name">{c.name}</div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            getAvailableColors().map(c => (
-                                                <div key={c} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                    <div
-                                                        className={`color-swatch ${color === c ? 'selected' : ''}`}
-                                                        style={{ background: COLOR_MAP[c] || '#ccc' }}
-                                                        title={c}
-                                                        onClick={() => { setColor(c); setStep(3); }}
-                                                    />
-                                                    <div className="color-name">{c}</div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                    <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
 
-                            {step === 3 && (
-                                <div>
-                                    <h2 style={{ marginBottom: '24px' }}>Internal Heating</h2>
-                                    <div className="toggle-wrap card" style={{ padding: '24px' }}>
-                                        <div className={`toggle ${heating ? 'on' : ''}`} onClick={() => setHeating(!heating)}>
-                                            <div className="toggle-thumb" />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontWeight: 600, fontSize: '15px' }}>3-Zone Heating</div>
-                                            <div style={{ fontSize: '13px', color: 'var(--text3)', marginTop: '4px' }}>+ € 150.00 — Includes wiring and control panel.</div>
-                                        </div>
-                                    </div>
-                                    <div style={{ marginTop: '32px', textAlign: 'right' }}>
-                                        <button className="btn btn-primary" onClick={() => setStep(4)}>Continue →</button>
-                                    </div>
-                                </div>
-                            )}
+                        {step === 1 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>01. Material</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Select the primary material for the seat cover.</p>
 
-                            {step === 5 && (
-                                <div>
-                                    <h2 style={{ marginBottom: '8px' }}>Optional Accessories</h2>
-                                    <p style={{ color: 'var(--text2)', marginBottom: '24px', fontSize: '14px' }}>Select compatible accessories for this model.</p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                        {data.accessories.map(a => (
-                                            <div
-                                                key={a.id}
-                                                className={`accessory-item ${accessories[a.id] ? 'selected' : ''}`}
-                                                onClick={() => setAccessories({ ...accessories, [a.id]: !accessories[a.id] })}
-                                            >
-                                                <div className="accessory-checkbox">
-                                                    {accessories[a.id] && <span style={{ color: 'white', fontSize: '12px' }}>✓</span>}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600 }}>{a.name}</div>
-                                                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '4px' }}>{a.description}</div>
-                                                </div>
-                                                <div style={{ fontWeight: 700, color: 'var(--red-light)' }}>
-                                                    + € {a.price.toFixed(2)}
+                                <div className="flex flex-col gap-4">
+                                    {data.materials.map(m => (
+                                        <div
+                                            key={m.id}
+                                            className={`p-6 rounded-2xl border-2 transition-all cursor-pointer ${material?.name === m.material ? 'border-red-600 bg-red-600/10' : 'border-white/5 bg-zinc-900/50 hover:border-white/20'}`}
+                                            onClick={() => { setMaterial({ name: m.material, price: m.price_delta }); setColor(''); }}
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="font-semibold text-lg">{m.material}</div>
+                                                <div className={`text-sm font-bold ${material?.name === m.material ? 'text-red-500' : 'text-zinc-400'}`}>
+                                                    {m.price_delta > 0 ? `+ € ${m.price_delta}` : 'Included'}
                                                 </div>
                                             </div>
-                                        ))}
+                                            <div className="text-xs text-zinc-500 leading-relaxed">High-performance technical fabric designed for maximum grip and durability under extreme conditions.</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>02. Color</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Available colors for {material?.name || 'selected material'}.</p>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    {data.category === 'Stadium' ? (
+                                        STADIUM_COLORS.map(c => (
+                                            <div key={c.name} className="flex flex-col items-center gap-3">
+                                                <div
+                                                    className={`w-16 h-16 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-lg ${stadiumColor.name === c.name ? 'ring-2 ring-red-600 ring-offset-4 ring-offset-zinc-950 scale-110' : 'ring-1 ring-white/10'}`}
+                                                    style={{ background: c.hex }}
+                                                    title={c.name}
+                                                    onClick={() => setStadiumColor(c)}
+                                                />
+                                                <div className="text-xs font-medium text-center text-zinc-400">{c.name}</div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        getAvailableColors().map(c => (
+                                            <div key={c} className="flex flex-col items-center gap-3">
+                                                <div
+                                                    className={`w-16 h-16 rounded-full cursor-pointer transition-transform hover:scale-110 shadow-lg ${color === c ? 'ring-2 ring-red-600 ring-offset-4 ring-offset-zinc-950 scale-110' : 'ring-1 ring-white/10'}`}
+                                                    style={{ background: COLOR_MAP[c] || '#ccc' }}
+                                                    title={c}
+                                                    onClick={() => setColor(c)}
+                                                />
+                                                <div className="text-xs font-medium text-center text-zinc-400">{c}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 3 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>03. Core</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Configure internal structural and comfort elements.</p>
+
+                                <div
+                                    className={`p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${heating ? 'border-red-600 bg-red-600/10' : 'border-white/5 bg-zinc-900/50 hover:border-white/20'}`}
+                                    onClick={() => setHeating(!heating)}
+                                >
+                                    <div>
+                                        <div className="font-semibold text-lg mb-1">3-Zone Climate Heating</div>
+                                        <div className="text-sm text-zinc-400">Integrated carbon-fiber heating pads.</div>
+                                    </div>
+                                    <div className="text-right flex flex-col items-end gap-3">
+                                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${heating ? 'bg-red-600' : 'bg-zinc-700'}`}>
+                                            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${heating ? 'translate-x-6' : 'translate-x-0'}`} />
+                                        </div>
+                                        <div className={`text-sm font-bold ${heating ? 'text-red-500' : 'text-zinc-500'}`}>+ € 150.00</div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+
+                        {step === 4 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>04. Branding</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Upload a custom logo (.png) to be embroidered on the seat.</p>
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/png, image/jpeg"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onload = (event) => setLogoPreview(event.target?.result as string);
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+
+                                {!logoPreview ? (
+                                    <div
+                                        className="border-2 border-dashed border-white/20 rounded-3xl p-12 flex flex-col items-center justify-center text-center bg-zinc-900/30 hover:bg-zinc-900/50 transition-colors cursor-pointer group"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <svg className="w-8 h-8 text-zinc-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                        </div>
+                                        <div className="font-semibold text-lg mb-2">Upload Custom Logo</div>
+                                        <div className="text-sm text-zinc-500 max-w-[200px]">Click to select a transparent PNG file.</div>
+                                        <div className="mt-6 px-4 py-2 bg-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-white hover:bg-white/20 transition-colors">Browse Files</div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-zinc-900/50 rounded-3xl p-6 border border-white/10">
+                                        <div className="flex items-center gap-6 mb-8">
+                                            <div className="w-24 h-24 rounded-2xl bg-black/50 border border-white/5 p-2 flex items-center justify-center relative group">
+                                                <Image src={logoPreview} alt="Logo Preview" width={80} height={80} style={{ objectFit: 'contain' }} />
+                                                <button
+                                                    className="absolute -top-2 -right-2 w-8 h-8 bg-black rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:border-white transition-colors opacity-0 group-hover:opacity-100"
+                                                    onClick={(e) => { e.stopPropagation(); setLogoPreview(null); }}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold text-lg mb-1">Logo Uploaded</div>
+                                                <div className="text-sm text-zinc-500">Vector embroidery ready.</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4" style={{ fontFamily: 'var(--font-rajdhani)' }}>Select Position</div>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {['Headrest', 'Backrest', 'Rear Shell'].map(pos => (
+                                                <div
+                                                    key={pos}
+                                                    className={`p-3 rounded-xl border-2 text-center cursor-pointer transition-colors ${logoPosition === pos ? 'border-red-600 bg-red-600/10 text-white' : 'border-white/5 bg-zinc-900/50 text-zinc-500 hover:border-white/20 hover:text-white'}`}
+                                                    onClick={() => setLogoPosition(pos as any)}
+                                                >
+                                                    <div className="text-xs font-bold uppercase tracking-wider">{pos}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {step === 5 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>05. Add-ons</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Select final accessories and structural mounts.</p>
+
+                                <div className="flex flex-col gap-4">
+                                    {data.accessories.map(a => (
+                                        <div
+                                            key={a.id}
+                                            className={`p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-4 ${accessories[a.id] ? 'border-red-600 bg-red-600/10' : 'border-white/5 bg-zinc-900/50 hover:border-white/20'}`}
+                                            onClick={() => setAccessories({ ...accessories, [a.id]: !accessories[a.id] })}
+                                        >
+                                            <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-colors ${accessories[a.id] ? 'border-red-500 bg-red-500 text-white' : 'border-zinc-600 text-transparent'}`}>
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-lg">{a.name}</div>
+                                                <div className="text-sm text-zinc-400">{a.description}</div>
+                                            </div>
+                                            <div className={`text-sm font-bold ${accessories[a.id] ? 'text-red-500' : 'text-zinc-500'}`}>
+                                                + € {a.price.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                     </div>
 
-                    <div>
-                        <div className="summary-box">
-                            <h3 style={{ marginBottom: '20px', fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>Summary</h3>
-
-                            <div className="summary-row">
-                                <span style={{ color: 'var(--text2)' }}>Base model</span>
-                                <span>€ {data.base_price.toFixed(2)}</span>
+                    {/* Bottom Action Bar */}
+                    <div className="p-8 border-t border-white/10 bg-zinc-950 shrink-0">
+                        <div className="flex justify-between items-end mb-6">
+                            <div>
+                                <div className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'var(--font-rajdhani)' }}>Total Configuration</div>
+                                <div className="text-4xl font-bold tracking-tighter text-white">€ {calcTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                             </div>
+                        </div>
 
-                            <div className="summary-row" style={{ opacity: material ? 1 : 0.5 }}>
-                                <span style={{ color: 'var(--text2)' }}>Material {material && `(${material.name})`}</span>
-                                <span>{material ? `€ ${material.price.toFixed(2)}` : '—'}</span>
-                            </div>
-
-                            <div className="summary-row" style={{ opacity: (color || data.category === 'Stadium') ? 1 : 0.5 }}>
-                                <span style={{ color: 'var(--text2)' }}>Color</span>
-                                <span>{data.category === 'Stadium' ? stadiumColor.name : (color || '—')}</span>
-                            </div>
-
-                            {Object.keys(accessories).some(k => accessories[Number(k)]) && (
-                                <div className="summary-row">
-                                    <span style={{ color: 'var(--text2)' }}>Accessories</span>
-                                    <span>€ {Object.entries(accessories).filter(([_, sel]) => sel).reduce((sum, [id]) => sum + (data.accessories.find(a => a.id === Number(id))?.price || 0), 0).toFixed(2)}</span>
-                                </div>
+                        <div className="flex gap-4">
+                            {step > 1 && (
+                                <button
+                                    onClick={prevStep}
+                                    className="px-6 py-4 rounded-xl border border-white/20 font-semibold text-white hover:bg-white/10 transition-colors uppercase tracking-wider text-sm flex-shrink-0"
+                                    style={{ fontFamily: 'var(--font-rajdhani)' }}
+                                >
+                                    Back
+                                </button>
                             )}
 
-                            <div className="summary-total">
-                                <span>TOTAL</span>
-                                <span>€ {calcTotal().toLocaleString('en-US')}</span>
-                            </div>
-
-                            <button
-                                className="btn btn-primary btn-lg"
-                                style={{ width: '100%', marginTop: '24px' }}
-                                disabled={!material || (!color && data.category !== 'Stadium') || saving}
-                                onClick={handleGenerateOrder}
-                            >
-                                {saving ? 'Generating...' : 'Generate Order →'}
-                            </button>
-                            {(!material || (!color && data.category !== 'Stadium')) && (
-                                <div style={{ fontSize: '11px', color: 'var(--text3)', textAlign: 'center', marginTop: '12px' }}>
-                                    Select material and color to proceed
-                                </div>
+                            {step < 5 ? (
+                                <button
+                                    onClick={nextStep}
+                                    className="flex-1 px-6 py-4 rounded-xl bg-white text-black font-bold hover:bg-zinc-200 transition-colors uppercase tracking-wider text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    style={{ fontFamily: 'var(--font-rajdhani)' }}
+                                    disabled={
+                                        (step === 1 && !material) ||
+                                        (step === 2 && !color && data.category !== 'Stadium')
+                                    }
+                                >
+                                    Next Step
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleAddToCart}
+                                    className="flex-1 px-6 py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors uppercase tracking-wider text-sm shadow-[0_0_30px_rgba(220,38,38,0.4)] disabled:opacity-50"
+                                    style={{ fontFamily: 'var(--font-rajdhani)' }}
+                                    disabled={!material || (!color && data.category !== 'Stadium')}
+                                >
+                                    Aggiungi al Carrello
+                                </button>
                             )}
                         </div>
                     </div>
                 </div>
             </main>
-        </>
+        </div>
     );
 }

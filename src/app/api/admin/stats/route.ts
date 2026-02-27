@@ -56,51 +56,72 @@ export async function GET() {
             continue;
         }
 
-        const seatName = config.seatName || 'Unknown';
-        const category = config.category || 'Uncategorized';
-        const material = config.material || 'Unknown';
-        const color = config.color || 'Unknown';
-        const username = order.username || 'Unknown';
+        const itemsToProcess = config.isCart && Array.isArray(config.items)
+            ? config.items.map((item: any) => ({ ...item, orderTotal: order.total_price })) // Note: orderTotal is just a reference, but we use item.price usually
+            : [{
+                productName: config.seatName || 'Unknown',
+                categoryId: config.category || 'Uncategorized',
+                material: config.material || 'Unknown',
+                color: config.color || 'Unknown',
+                price: order.total_price || 0
+            }];
 
-        // Product stats
-        if (!productMap.has(seatName)) {
-            productMap.set(seatName, {
-                name: seatName,
-                category,
-                quantity: 0,
-                revenue: 0,
-                materials: {},
-                colors: {},
-            });
+        for (const item of itemsToProcess) {
+            const seatName = item.productName || 'Unknown';
+            const category = item.categoryId || 'Uncategorized';
+            const material = item.material || 'Unknown';
+            const color = item.color || 'Unknown';
+            const itemPrice = item.price || 0;
+            const username = order.username || 'Unknown';
+
+            // Product stats
+            if (!productMap.has(seatName)) {
+                productMap.set(seatName, {
+                    name: seatName,
+                    category,
+                    quantity: 0,
+                    revenue: 0,
+                    materials: {},
+                    colors: {},
+                });
+            }
+            const prod = productMap.get(seatName)!;
+            prod.quantity += 1;
+            prod.revenue += itemPrice;
+            prod.materials[material] = (prod.materials[material] || 0) + 1;
+            prod.colors[color] = (prod.colors[color] || 0) + 1;
+
+            // Customer stats
+            const custKey = `${order.user_id}`;
+            if (!customerMap.has(custKey)) {
+                customerMap.set(custKey, {
+                    username,
+                    userId: order.user_id,
+                    totalOrders: 0,
+                    totalRevenue: 0,
+                    products: {},
+                    lastOrder: order.created_at,
+                });
+            }
+            const cust = customerMap.get(custKey)!;
+            // totalOrders logic is per order, so we move it outside this inner loop or keep it if we want items? 
+            // Actually cust.totalOrders should be count of orders, not items.
+
+            if (!cust.products[seatName]) {
+                cust.products[seatName] = { quantity: 0, revenue: 0 };
+            }
+            cust.products[seatName].quantity += 1;
+            cust.products[seatName].revenue += itemPrice;
         }
-        const prod = productMap.get(seatName)!;
-        prod.quantity += 1;
-        prod.revenue += order.total_price || 0;
-        prod.materials[material] = (prod.materials[material] || 0) + 1;
-        prod.colors[color] = (prod.colors[color] || 0) + 1;
 
-        // Customer stats
+        // Increment totalOrders and totalRevenue per order for the customer
         const custKey = `${order.user_id}`;
-        if (!customerMap.has(custKey)) {
-            customerMap.set(custKey, {
-                username,
-                userId: order.user_id,
-                totalOrders: 0,
-                totalRevenue: 0,
-                products: {},
-                lastOrder: order.created_at,
-            });
+        if (customerMap.has(custKey)) {
+            const cust = customerMap.get(custKey)!;
+            cust.totalOrders += 1;
+            cust.totalRevenue += order.total_price || 0;
+            if (order.created_at > cust.lastOrder) cust.lastOrder = order.created_at;
         }
-        const cust = customerMap.get(custKey)!;
-        cust.totalOrders += 1;
-        cust.totalRevenue += order.total_price || 0;
-        if (order.created_at > cust.lastOrder) cust.lastOrder = order.created_at;
-
-        if (!cust.products[seatName]) {
-            cust.products[seatName] = { quantity: 0, revenue: 0 };
-        }
-        cust.products[seatName].quantity += 1;
-        cust.products[seatName].revenue += order.total_price || 0;
     }
 
     // Sort products by quantity sold (descending)

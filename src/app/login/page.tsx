@@ -60,7 +60,11 @@ export default function LoginPage() {
             }
 
             // Success
-            router.push('/catalog');
+            if (data.role === 'admin') {
+                router.push('/admin');
+            } else {
+                router.push('/catalog');
+            }
         } catch {
             setError('Server error. Please try again.');
         } finally {
@@ -108,7 +112,7 @@ export default function LoginPage() {
                 return;
             }
             // Success
-            setSuccess(data.message || 'Richiesta inviata! Verrai contattato via email dopo l\'approvazione.');
+            setSuccess(data.message || 'Request sent! You will be contacted via email upon approval.');
             setGuestForm({
                 companyName: '',
                 vat: '',
@@ -168,14 +172,14 @@ export default function LoginPage() {
                             onClick={() => { setIsGuestMode(false); setError(''); }}
                             style={{ flex: 1, padding: '10px 0', border: 'none', background: !isGuestMode ? '#222' : 'transparent', color: !isGuestMode ? 'white' : '#888', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
                         >
-                            Log-in Operatore
+                            Operator Login
                         </button>
                         <button
                             type="button"
                             onClick={() => { setIsGuestMode(true); setError(''); }}
                             style={{ flex: 1, padding: '10px 0', border: 'none', background: isGuestMode ? '#222' : 'transparent', color: isGuestMode ? 'white' : '#888', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }}
                         >
-                            Richiesta Registrazione
+                            Registration Request
                         </button>
                     </div>
                 )}
@@ -183,11 +187,11 @@ export default function LoginPage() {
                 {isForgotMode ? (
                     <form onSubmit={handleForgotSubmit} className={styles.form}>
                         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                            <h2 className="text-xl font-bold">Recupero Password</h2>
-                            <p className="text-sm text-gray-500">Inserisci la tua email per ricevere un link di ripristino.</p>
+                            <h2 className="text-xl font-bold">Password Recovery</h2>
+                            <p className="text-sm text-gray-500">Enter your email to receive a reset link.</p>
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Email Registrata</label>
+                            <label className="form-label">Registered Email</label>
                             <input
                                 className="form-input"
                                 type="email"
@@ -199,10 +203,10 @@ export default function LoginPage() {
                         </div>
                         {error && <div className={styles.error}>⚠ {error}</div>}
                         <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%' }}>
-                            {loading ? 'Invio in corso...' : 'Invia Link di Ripristino'}
+                            {loading ? 'Sending...' : 'Send Reset Link'}
                         </button>
                         <button type="button" onClick={() => setIsForgotMode(false)} className="btn btn-ghost mt-4" style={{ width: '100%' }}>
-                            Torna al Login
+                            Back to Login
                         </button>
                     </form>
                 ) : mfaRequired ? (
@@ -240,18 +244,18 @@ export default function LoginPage() {
                 ) : isGuestMode ? (
                     <form onSubmit={handleGuestSubmit} className={styles.form}>
                         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.5 }}>Invia una richiesta di registrazione per configurare ed ordinare i prodotti.</p>
+                            <p style={{ color: 'var(--text2)', fontSize: '13px', lineHeight: 1.5 }}>Submit a registration request to configure and order products.</p>
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Ragione Sociale (Company Name) *</label>
+                            <label className="form-label">Company Name *</label>
                             <input className="form-input" required type="text" value={guestForm.companyName} onChange={e => setGuestForm({ ...guestForm, companyName: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Partita IVA (VAT) *</label>
+                            <label className="form-label">VAT Number *</label>
                             <input className="form-input" required type="text" value={guestForm.vat} onChange={e => setGuestForm({ ...guestForm, vat: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Indirizzo (Address) *</label>
+                            <label className="form-label">Address *</label>
                             <input className="form-input" required type="text" value={guestForm.address} onChange={e => setGuestForm({ ...guestForm, address: e.target.value })} />
                         </div>
                         <div className="form-group">
@@ -259,14 +263,14 @@ export default function LoginPage() {
                             <input className="form-input" required type="email" value={guestForm.email} onChange={e => setGuestForm({ ...guestForm, email: e.target.value })} />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Crea Password *</label>
+                            <label className="form-label">Create Password *</label>
                             <input className="form-input" required type="password" value={guestForm.password} onChange={e => setGuestForm({ ...guestForm, password: e.target.value })} placeholder="••••••••" />
                         </div>
                         {error && <div className={styles.error}>⚠ {error}</div>}
                         {success && <div style={{ color: 'var(--success)', fontSize: '14px', textAlign: 'center', background: 'rgba(34, 197, 94, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)', marginBottom: '16px' }}>✓ {success}</div>}
                         {!success && (
                             <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ width: '100%' }}>
-                                {loading ? 'Inviando...' : 'Invia Richiesta ↓'}
+                                {loading ? 'Sending...' : 'Submit Request ↓'}
                             </button>
                         )}
                     </form>
@@ -279,7 +283,7 @@ export default function LoginPage() {
                                 type="text"
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
-                                placeholder="La tua email"
+                                placeholder="Your email"
                                 autoComplete="username"
                                 required
                             />
@@ -292,7 +296,7 @@ export default function LoginPage() {
                                     onClick={() => setIsForgotMode(true)}
                                     style={{ fontSize: '12px', color: 'var(--recaro-red)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px 0' }}
                                 >
-                                    Dimenticata?
+                                    Forgot?
                                 </button>
                             </div>
                             <input

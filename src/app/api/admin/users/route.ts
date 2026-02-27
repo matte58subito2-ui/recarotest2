@@ -13,10 +13,10 @@ export async function GET() {
 
         const db = getDb();
         const usersRes = await db.execute(`
-            SELECT id, email, company_name, vat, address, is_active, created_at 
+            SELECT id, username, email, company_name, vat, address, is_active, created_at 
             FROM users 
             WHERE role = 'user' 
-            ORDER BY created_at DESC
+            ORDER BY is_active ASC, created_at DESC
         `);
         const users = usersRes.rows as any[];
 

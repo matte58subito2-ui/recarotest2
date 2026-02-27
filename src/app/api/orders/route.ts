@@ -10,40 +10,50 @@ function generateOrderNumber() {
 
 export async function POST(request: NextRequest) {
     const session = await getSession();
-    if (!session) return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    const userId = session ? session.id : null;
 
     const config = await request.json();
     const db = getDb();
     const orderNumber = generateOrderNumber();
 
-    const totalPrice = (config.basePrice || 0) + (config.materialPriceDelta || 0) +
-        (config.heatingCost || 0) + (config.accessoriesTotal || 0);
+    const totalPrice = config.isCart
+        ? config.totalPrice
+        : (config.basePrice || 0) + (config.materialPriceDelta || 0) + (config.heatingCost || 0) + (config.accessoriesTotal || 0);
 
     const info = await db.execute({
         sql: 'INSERT INTO orders (order_number, user_id, config_json, total_price) VALUES (?, ?, ?, ?)',
-        args: [orderNumber, session.id, JSON.stringify(config), totalPrice]
+        args: [orderNumber, userId, JSON.stringify(config), totalPrice]
     });
 
     // Auto-upload CSV to external platform (non-blocking)
     const webhookUrl = process.env.ERP_CSV_WEBHOOK_URL;
     if (webhookUrl) {
-        const csvRows = [
+        let csvRows = [
             ['Field', 'Value'],
             ['Order Number', orderNumber],
-            ['Date', new Date().toISOString()],
-            ['Seat Model', config.seatName || ''],
-            ['Category', config.category || ''],
-            ['Material', config.material || ''],
-            ['Color', config.color || ''],
-            ['Heating', config.heating ? 'Yes' : 'No'],
-            ['Logo - Backrest', config.logos?.schienale ? 'Yes' : 'No'],
-            ['Logo - Headrest', config.logos?.poggiatesta ? 'Yes' : 'No'],
-            ['Logo - Seat Back', config.logos?.retroSedile ? 'Yes' : 'No'],
-            ['Logo - Bolsters', config.logos?.fianchetti ? 'Yes' : 'No'],
-            ['Accessories', (config.accessories || []).join(', ')],
-            ['Base Price', `€ ${(config.basePrice || 0).toFixed(2)}`],
-            ['Total', `€ ${totalPrice.toFixed(2)}`],
+            ['Date', new Date().toISOString()]
         ];
+
+        if (config.isCart) {
+            config.items.forEach((item: any, i: number) => {
+                csvRows.push([`Item ${i + 1}`, `${item.productName} (${item.categoryId}) - ${item.colorHex}`]);
+            });
+            csvRows.push(['Total', `€ ${totalPrice.toFixed(2)}`]);
+        } else {
+            csvRows = csvRows.concat([
+                ['Seat Model', config.seatName || ''],
+                ['Category', config.category || ''],
+                ['Material', config.material || ''],
+                ['Color', config.color || ''],
+                ['Heating', config.heating ? 'Yes' : 'No'],
+                ['Logo - Uploaded', config.customLogo?.url ? 'Yes' : 'No'],
+                ['Logo - Position', config.customLogo?.position || 'N/A'],
+                ['Accessories', (config.accessories || []).join(', ')],
+                ['Base Price', `€ ${(config.basePrice || 0).toFixed(2)}`],
+                ['Total', `€ ${totalPrice.toFixed(2)}`],
+            ]);
+        }
+
         const csvContent = csvRows.map(row => row.map(v => `"${v}"`).join(',')).join('\n');
 
         // Fire-and-forget: don't block the customer response

@@ -36,6 +36,7 @@ interface StatsData {
     topProducts: ProductStat[];
     customers: CustomerStat[];
     categories: CategoryStat[];
+    error?: string;
 }
 
 function fmt(n: number) {
@@ -56,10 +57,11 @@ export default function StatsPage() {
     }, []);
 
     if (loading) return <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text2)' }}>Loading statistics...</div>;
-    if (!data) return <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text2)' }}>Unable to load statistics.</div>;
+    if (!data || data.error) return <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text2)' }}>{data?.error || 'Unable to load statistics.'}</div>;
 
-    const maxQty = data.topProducts.length > 0 ? data.topProducts[0].quantity : 1;
-    const maxRevenue = data.topProducts.length > 0 ? Math.max(...data.topProducts.map(p => p.revenue)) : 1;
+    const topProducts = data.topProducts || [];
+    const maxQty = topProducts.length > 0 ? topProducts[0].quantity : 1;
+    const maxRevenue = topProducts.length > 0 ? Math.max(...topProducts.map(p => p.revenue)) : 1;
 
     return (
         <div>
@@ -153,7 +155,7 @@ export default function StatsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {data.topProducts.map((p, i) => {
+                            {topProducts.map((p, i) => {
                                 const topMat = Object.entries(p.materials).sort((a, b) => b[1] - a[1])[0];
                                 const topCol = Object.entries(p.colors).sort((a, b) => b[1] - a[1])[0];
                                 const qtyPct = (p.quantity / maxQty) * 100;
@@ -192,7 +194,7 @@ export default function StatsPage() {
                                     </tr>
                                 );
                             })}
-                            {data.topProducts.length === 0 && (
+                            {topProducts.length === 0 && (
                                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text3)' }}>No sales data yet. Complete some orders to see statistics.</td></tr>
                             )}
                         </tbody>

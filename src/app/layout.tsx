@@ -1,19 +1,28 @@
 import type { Metadata } from 'next';
+import { Inter, Rajdhani } from 'next/font/google';
 import './globals.css';
 
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-inter',
+    display: 'swap',
+});
+
+const rajdhani = Rajdhani({
+    weight: ['400', '500', '600', '700'],
+    subsets: ['latin'],
+    variable: '--font-rajdhani',
+    display: 'swap',
+});
+
 export const metadata: Metadata = {
-    title: 'RECARO B2B — Configuratore Sedili',
-    description: 'Piattaforma B2B riservata per la configurazione e l\'ordine di sedili RECARO.',
+    title: 'RECARO B2B — Seat Configurator',
+    description: 'Exclusive B2B platform for RECARO seat configuration and ordering.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="it">
-            <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
-            </head>
+        <html lang="en-US" className={`${inter.variable} ${rajdhani.variable}`}>
             <body>{children}</body>
         </html>
     );
