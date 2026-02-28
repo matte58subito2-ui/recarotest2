@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             role: user.role as string
         });
 
-        const response = NextResponse.json({ ok: true, redirect: '/catalog' });
+        const response = NextResponse.json({ ok: true, redirect: '/' });
         response.cookies.set(COOKIE_NAME, impersonationToken, {
             httpOnly: true,
             sameSite: 'lax',

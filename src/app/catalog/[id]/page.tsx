@@ -60,6 +60,11 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
     const [stadiumColor, setStadiumColor] = useState(STADIUM_COLORS[0]);
     const [heating, setHeating] = useState(false);
     const [accessories, setAccessories] = useState<Record<number, boolean>>({});
+    const [mediaAgreed, setMediaAgreed] = useState(false);
+
+    // Partnership Selection
+    const [partnershipLevel, setPartnershipLevel] = useState<'Nessuna' | 'Logo' | 'Logo e Media'>('Nessuna');
+    const [discountRate, setDiscountRate] = useState(0);
 
     // Logo Upload
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -85,6 +90,12 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
             return () => modelRef.current?.removeEventListener('load', updateColor);
         }
     }, [stadiumColor, data]);
+
+    useEffect(() => {
+        if (partnershipLevel === 'Nessuna') setDiscountRate(0);
+        else if (partnershipLevel === 'Logo') setDiscountRate(0.15);
+        else if (partnershipLevel === 'Logo e Media') setDiscountRate(0.30);
+    }, [partnershipLevel]);
 
     useEffect(() => {
         fetch(`/api/seats/${params.id}`)
@@ -115,11 +126,15 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                 if (acc) t += acc.price;
             }
         });
-        return t;
+
+        const discounted = t * (1 - discountRate);
+        return { original: t, final: discounted };
     };
 
     const handleAddToCart = () => {
         const finalColorHex = data.category === 'Stadium' ? stadiumColor.hex : (COLOR_MAP[color] || '#000000');
+
+        const { original, final } = calcTotal();
 
         addItem({
             categoryId: data.category,
@@ -127,7 +142,10 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
             colorHex: finalColorHex,
             logoBlob: logoPreview,
             logoPosition: logoPreview ? logoPosition : null,
-            price: calcTotal(),
+            price: final,
+            originalPrice: original,
+            partnershipLevel,
+            discountRate,
             material: material?.name,
             heating,
             accessories: Object.entries(accessories)
@@ -140,7 +158,7 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
         router.push('/catalog');
     };
 
-    const nextStep = () => setStep(s => Math.min(s + 1, 5));
+    const nextStep = () => setStep(s => Math.min(s + 1, 6));
     const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
     return (
@@ -196,6 +214,23 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                                         <Image src={logoPreview} alt="Custom Logo" width={100} height={100} style={{ objectFit: 'contain' }} />
                                     </div>
                                 )}
+
+                                {/* Mandatory RECARO Branding for Partnership Levels */}
+                                {partnershipLevel !== 'Nessuna' && (
+                                    <div
+                                        className="absolute z-30 pointer-events-none transition-all duration-500"
+                                        style={{
+                                            top: '12%',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: '120px',
+                                            opacity: 0.9,
+                                            filter: 'brightness(0) invert(1)' // Force white logo on dark seat
+                                        }}
+                                    >
+                                        <Image src="https://it.recaro-automotive.com/typo3conf/ext/wc_recaro_site/Resources/Public/img/recaro_logo.png" alt="RECARO Branding" width={120} height={30} style={{ objectFit: 'contain' }} />
+                                    </div>
+                                )}
                             </div>
                         ) : data.image_url ? (
                             <div className="w-full h-full max-w-4xl max-h-[70vh] relative flex items-center justify-center drop-shadow-2xl">
@@ -218,6 +253,22 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                                         <Image src={logoPreview} alt="Custom Logo" width={100} height={100} style={{ objectFit: 'contain' }} />
                                     </div>
                                 )}
+
+                                {/* Mandatory RECARO Branding for Partnership Levels */}
+                                {partnershipLevel !== 'Nessuna' && (
+                                    <div
+                                        className="absolute z-30 pointer-events-none transition-all duration-500"
+                                        style={{
+                                            top: '12%',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            width: '120px',
+                                            opacity: 0.9
+                                        }}
+                                    >
+                                        <Image src="https://it.recaro-automotive.com/typo3conf/ext/wc_recaro_site/Resources/Public/img/recaro_logo.png" alt="RECARO Branding" width={120} height={30} style={{ objectFit: 'contain' }} />
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="text-white/30 text-xl font-medium">No 3D Model Available</div>
@@ -226,7 +277,7 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
 
                     <div className="absolute bottom-8 left-8 right-8 z-10">
                         <div className="flex items-center gap-2 mb-4">
-                            {[1, 2, 3, 4, 5].map(i => (
+                            {[1, 2, 3, 4, 5, 6].map(i => (
                                 <div key={i} className={`h-1 flex-1 rounded-full bg-white/10 overflow-hidden`}>
                                     <div className={`h-full bg-red-600 transition-all duration-500 ${step >= i ? 'w-full' : 'w-0'}`} />
                                 </div>
@@ -238,6 +289,7 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                             <span>03 / Core</span>
                             <span>04 / Branding</span>
                             <span>05 / Add-ons</span>
+                            <span>06 / Partner</span>
                         </div>
                     </div>
                 </div>
@@ -425,6 +477,76 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                             </div>
                         )}
 
+                        {step === 6 && (
+                            <div className="animate-fade-in">
+                                <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase' }}>06. Partnership</h2>
+                                <p className="text-zinc-500 text-sm mb-8 font-medium">Define your collaboration tier and unlock exclusive benefits.</p>
+
+                                <div className="flex flex-col gap-4">
+                                    {[
+                                        {
+                                            id: 'Nessuna',
+                                            title: 'Nessuna Partnership',
+                                            desc: 'Full privacy and clean aesthetics. No RECARO branding is visible on the final product.',
+                                            details: 'Ideal for private collections or projects where minimal branding is a requirement.',
+                                            discount: 0
+                                        },
+                                        {
+                                            id: 'Logo',
+                                            title: 'Branding Logo',
+                                            desc: 'RECARO logo visible. Strategic brand placement for premium exposure.',
+                                            details: 'Product features the signature white RECARO logo in a prominent position, ideal for showroom displays or prestige projects.',
+                                            discount: 15
+                                        },
+                                        {
+                                            id: 'Logo e Media',
+                                            title: 'Logo e Media Partnership',
+                                            desc: 'Full Marketing Collaboration. Deep discount for high-quality content sharing.',
+                                            details: 'RECARO logo visible. Requires providing professional photo/video assets of the product in its final environment for RECARO marketing.',
+                                            discount: 30
+                                        },
+                                    ].map(opt => (
+                                        <div
+                                            key={opt.id}
+                                            className={`p-6 rounded-2xl border-2 transition-all cursor-pointer ${partnershipLevel === opt.id ? 'border-red-600 bg-red-600/10' : 'border-white/5 bg-zinc-900/50 hover:border-white/20'}`}
+                                            onClick={() => setPartnershipLevel(opt.id as any)}
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <div className="font-semibold text-lg uppercase tracking-tight" style={{ fontFamily: 'var(--font-rajdhani)' }}>{opt.title}</div>
+                                                {opt.discount > 0 && (
+                                                    <div className="px-2 py-0.5 bg-red-600 text-[10px] font-black uppercase text-white rounded">-{opt.discount}%</div>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-zinc-400 leading-relaxed font-medium mb-2">{opt.desc}</div>
+                                            <div className="text-[10px] text-zinc-600 leading-relaxed">{opt.details}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {partnershipLevel === 'Logo e Media' && (
+                                    <div className="mt-8 p-6 bg-red-600/5 border border-red-600/20 rounded-2xl animate-fade-in">
+                                        <label className="flex gap-4 cursor-pointer group">
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={mediaAgreed}
+                                                onChange={() => setMediaAgreed(!mediaAgreed)}
+                                            />
+                                            <div className={`min-w-[24px] h-6 rounded border-2 flex items-center justify-center transition-colors mt-1 ${mediaAgreed ? 'bg-red-600 border-red-600' : 'border-zinc-700 bg-zinc-900 group-hover:border-zinc-500'}`}>
+                                                {mediaAgreed && <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                            </div>
+                                            <div className="text-sm">
+                                                <div className="text-white font-bold uppercase tracking-tight mb-1" style={{ fontFamily: 'var(--font-rajdhani)' }}>Media Partnership Agreement</div>
+                                                <div className="text-zinc-500 text-xs leading-relaxed">
+                                                    I agree to provide high-quality photo/video assets of the product in its final installation environment within 30 days of delivery. I understand that RECARO reserves the right to use these assets for global marketing.
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                     </div>
 
                     {/* Bottom Action Bar */}
@@ -432,8 +554,19 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                         <div className="flex justify-between items-end mb-6">
                             <div>
                                 <div className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1" style={{ fontFamily: 'var(--font-rajdhani)' }}>Total Configuration</div>
-                                <div className="text-4xl font-bold tracking-tighter text-white">€ {calcTotal().toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-4xl font-bold tracking-tighter text-white">€ {calcTotal().final.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                    {discountRate > 0 && (
+                                        <div className="text-xl text-zinc-600 line-through decoration-red-600/50">€ {calcTotal().original.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                    )}
+                                </div>
                             </div>
+                            {discountRate > 0 && (
+                                <div className="text-right">
+                                    <div className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-0.5">Sconto Partnership</div>
+                                    <div className="text-sm font-bold text-red-500">- € {(calcTotal().original - calcTotal().final).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-4">
@@ -447,7 +580,7 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                                 </button>
                             )}
 
-                            {step < 5 ? (
+                            {step < 6 ? (
                                 <button
                                     onClick={nextStep}
                                     className="flex-1 px-6 py-4 rounded-xl bg-white text-black font-bold hover:bg-zinc-200 transition-colors uppercase tracking-wider text-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -462,11 +595,11 @@ export default function ConfiguratorPage({ params }: { params: { id: string } })
                             ) : (
                                 <button
                                     onClick={handleAddToCart}
-                                    className="flex-1 px-6 py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors uppercase tracking-wider text-sm shadow-[0_0_30px_rgba(220,38,38,0.4)] disabled:opacity-50"
+                                    className="flex-1 px-6 py-4 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors uppercase tracking-wider text-sm shadow-[0_0_30px_rgba(220,38,38,0.4)] disabled:opacity-30 disabled:grayscale transition-all"
                                     style={{ fontFamily: 'var(--font-rajdhani)' }}
-                                    disabled={!material || (!color && data.category !== 'Stadium')}
+                                    disabled={!material || (!color && data.category !== 'Stadium') || (partnershipLevel === 'Logo e Media' && !mediaAgreed)}
                                 >
-                                    Aggiungi al Carrello
+                                    {partnershipLevel === 'Logo e Media' && !mediaAgreed ? 'Accetta Accordo per Procedere' : 'Aggiungi al Carrello'}
                                 </button>
                             )}
                         </div>

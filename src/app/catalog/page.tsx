@@ -108,7 +108,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
                     ))}
                 </div>
 
-                {selectedCat ? (
+                {selectedCat && (
                     <div className="animate-fade">
                         <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
                             <h2 style={{ fontSize: '24px', fontWeight: '800' }}>
@@ -190,35 +190,88 @@ export default async function CatalogPage({ searchParams }: { searchParams: { ca
                             </div>
                         )}
                     </div>
-                ) : (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '120px 0',
-                        opacity: 0.5,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '24px',
-                        background: 'radial-gradient(circle at center, #111 0%, transparent 70%)',
-                        borderRadius: '40px'
-                    }}>
-                        <div style={{
-                            fontSize: '80px',
-                            filter: 'grayscale(1)',
-                            animation: 'pulse 3s infinite ease-in-out'
-                        }}>
-                            📦
-                        </div>
-                        <div>
-                            <h3 style={{ fontSize: '20px', fontWeight: '600', color: 'white', marginBottom: '8px' }}>
-                                Browse the Catalog
-                            </h3>
-                            <p style={{ maxWidth: '300px', margin: '0 auto', fontSize: '14px' }}>
-                                Select one of the RECARO divisions above to view available models.
-                            </p>
-                        </div>
-                    </div>
                 )}
+
+                {/* Dinamica Feature Slider Section */}
+                <section style={{ marginTop: '100px', marginBottom: '80px' }} className="animate-fade-in">
+                    <div style={{ marginBottom: '40px' }}>
+                        <h2 style={{ fontSize: '28px', fontWeight: '800', fontFamily: 'var(--font-rajdhani)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            RECARO <span style={{ color: 'var(--red-light)' }}>Heritage & Performance</span>
+                        </h2>
+                        <div style={{ width: '60px', height: '4px', background: 'var(--red)', marginTop: '12px' }}></div>
+                    </div>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                        gap: '24px'
+                    }}>
+                        {[
+                            {
+                                title: 'Innovazione',
+                                desc: 'Dal 1906 percorriamo sempre nuove strade e siamo alla ricerca di novità. I prodotti di RECARO si contraddistinguono per la tecnologia all’avanguardia.',
+                                img: 'https://it.recaro-automotive.com/fileadmin/_processed_/8/0/csm_recaro-quicklink-footer-innovation-1200x720_383437a7b1.jpg'
+                            },
+                            {
+                                title: 'Qualità',
+                                desc: 'Crediamo nella qualità eccezionale e nella lavorazione artigianale dei nostri prodotti e scegliamo per i nostri sedili solo i materiali migliori.',
+                                img: 'https://it.recaro-automotive.com/fileadmin/_processed_/a/e/csm_recaro-quicklink-footer-quality-1200x720_8b1e2b8012.jpg'
+                            },
+                            {
+                                title: 'Sicurezza',
+                                desc: 'Per RECARO la sicurezza effettiva al volante è più importante della semplice impressione di essere al sicuro. La sicurezza è la nostra priorità maggiore.',
+                                img: 'https://it.recaro-automotive.com/fileadmin/_processed_/4/e/csm_recaro-quicklink-footer-safety-1200x720_0cc7c5c9f4.jpg'
+                            },
+                            {
+                                title: 'Comfort',
+                                desc: 'RECARO è alla continua ricerca di nuove strade per sviluppare sedili che si adattano alla forma personale del corpo.',
+                                img: 'https://it.recaro-automotive.com/fileadmin/_processed_/c/9/csm_recaro-quicklink-footer-comfort-02-1200x720_a118e3c1c8.jpg'
+                            }
+                        ].map((slide, i) => (
+                            <div
+                                key={slide.title}
+                                className="group relative overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 transition-all duration-500 hover:border-red-600/50 hover:shadow-[0_0_40px_rgba(220,38,38,0.15)]"
+                                style={{
+                                    height: '320px',
+                                    animationDelay: `${i * 100}ms`
+                                }}
+                            >
+                                {/* Background Image */}
+                                <div className="absolute inset-0 z-0">
+                                    <Image
+                                        src={slide.img}
+                                        alt={slide.title}
+                                        fill
+                                        style={{ objectFit: 'cover' }}
+                                        className="transition-transform duration-700 group-hover:scale-110 opacity-60"
+                                    />
+                                    {/* Gradients */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-red-600/10 z-10" />
+                                </div>
+
+                                {/* Content Overlay */}
+                                <div className="absolute inset-0 z-20 p-8 flex flex-col justify-end">
+                                    <h3
+                                        style={{ fontFamily: 'var(--font-rajdhani)' }}
+                                        className="text-2xl font-black uppercase tracking-tighter text-white mb-2 transform transition-transform duration-500 group-hover:-translate-y-2"
+                                    >
+                                        {slide.title}
+                                    </h3>
+                                    <div className="h-0 group-hover:h-auto overflow-hidden transition-all duration-500 opacity-0 group-hover:opacity-100">
+                                        <p className="text-zinc-300 text-xs leading-relaxed font-medium">
+                                            {slide.desc}
+                                        </p>
+                                    </div>
+                                    <div className="w-12 h-1 bg-red-600 mt-4 transform origin-left transition-transform duration-500 group-hover:scale-x-150" />
+                                </div>
+
+                                {/* Decorative Edge Grain */}
+                                <div className="absolute inset-0 z-30 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+                            </div>
+                        ))}
+                    </div>
+                </section>
             </main>
         </>
     );

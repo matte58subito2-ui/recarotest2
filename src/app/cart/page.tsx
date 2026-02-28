@@ -13,6 +13,8 @@ export default function CartPage() {
     const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
     const router = useRouter();
 
+    const hasMediaPartnership = items.some(item => item.partnershipLevel === 'Logo e Media');
+
     const total = items.reduce((sum, item) => sum + item.price * (item.quantity ?? 1), 0);
 
     const handleCheckout = async () => {
@@ -99,6 +101,13 @@ export default function CartPage() {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {item.partnershipLevel && item.partnershipLevel !== 'Nessuna' && (
+                                            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/30 rounded-full">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></div>
+                                                <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">{item.partnershipLevel} (-{(item.discountRate! * 100)}%)</div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Quantity & Price */}
@@ -145,6 +154,7 @@ export default function CartPage() {
                             <div className="text-4xl font-bold tracking-tighter text-red-500 mb-6">
                                 € {total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
+
                             <div className="flex gap-4">
                                 <button onClick={clearCart} className="px-6 py-4 rounded-xl border border-white/20 font-bold uppercase tracking-wider text-sm hover:bg-white/10 transition-colors">
                                     Svuota Carrello

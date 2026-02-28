@@ -36,21 +36,26 @@ export async function POST(request: NextRequest) {
 
         if (config.isCart) {
             config.items.forEach((item: any, i: number) => {
-                csvRows.push([`Item ${i + 1}`, `${item.productName} (${item.categoryId}) - ${item.colorHex}`]);
+                const discountCode = item.partnershipLevel === 'Brand Visibility' ? 'VIS_15' : item.partnershipLevel === 'Media Partnership' ? 'MEDIA_30' : 'STD';
+                csvRows.push([`Item ${i + 1}`, `${item.productName} (${item.categoryId})`]);
+                csvRows.push([`Item ${i + 1} Partnership`, `${item.partnershipLevel || 'Standard'} (${discountCode})`]);
+                csvRows.push([`Item ${i + 1} Price`, `€ ${item.price.toFixed(2)}`]);
             });
-            csvRows.push(['Total', `€ ${totalPrice.toFixed(2)}`]);
+            csvRows.push(['Order Total', `€ ${totalPrice.toFixed(2)}`]);
         } else {
+            const discountCode = config.partnershipLevel === 'Brand Visibility' ? 'VIS_15' : config.partnershipLevel === 'Media Partnership' ? 'MEDIA_30' : 'STD';
             csvRows = csvRows.concat([
                 ['Seat Model', config.seatName || ''],
                 ['Category', config.category || ''],
+                ['Partnership Level', config.partnershipLevel || 'Standard'],
+                ['Discount Code', discountCode],
                 ['Material', config.material || ''],
                 ['Color', config.color || ''],
                 ['Heating', config.heating ? 'Yes' : 'No'],
-                ['Logo - Uploaded', config.customLogo?.url ? 'Yes' : 'No'],
                 ['Logo - Position', config.customLogo?.position || 'N/A'],
                 ['Accessories', (config.accessories || []).join(', ')],
-                ['Base Price', `€ ${(config.basePrice || 0).toFixed(2)}`],
-                ['Total', `€ ${totalPrice.toFixed(2)}`],
+                ['Original Price', `€ ${(config.originalPrice || totalPrice).toFixed(2)}`],
+                ['Final Price', `€ ${totalPrice.toFixed(2)}`],
             ]);
         }
 

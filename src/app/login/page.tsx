@@ -88,7 +88,7 @@ export default function LoginPage() {
                 return;
             }
             // Success
-            router.push('/catalog');
+            router.push('/');
         } finally {
             setLoading(false);
         }

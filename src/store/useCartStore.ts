@@ -8,8 +8,11 @@ export interface CartItem {
     colorHex: string; // e.g., '#c41e1e'
     logoBlob: string | null; // Data URL or null
     logoPosition: string | null; // 'Headrest', 'Backrest', etc.
-    price: number; // Unit price for this configuration
+    price: number; // Final price per unit
     quantity: number; // How many units ordered
+    originalPrice?: number; // Price before discount
+    partnershipLevel?: 'Nessuna' | 'Logo' | 'Logo e Media';
+    discountRate?: number; // e.g., 0.15 or 0.30
 
     // Additional configuration details
     material?: string;

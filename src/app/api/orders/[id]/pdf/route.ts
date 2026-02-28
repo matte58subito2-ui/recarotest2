@@ -78,21 +78,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   <div class="section">
     <h2>Seat Configuration</h2>
     <table>
-      <tr><td>Model</td><td>${config.seatName || '—'}</td></tr>
-      <tr><td>Category</td><td>${config.category || '—'}</td></tr>
-      <tr><td>Material</td><td>${config.material || '—'}</td></tr>
-      <tr><td>Color</td><td>${config.color || '—'}</td></tr>
-      <tr><td>Heating</td><td>${config.heating ? '✅ Included' : '❌ Not included'}</td></tr>
+      <tr><td>Model</td><td>${config.seatName || (config.isCart ? config.items[0].productName : '—')}</td></tr>
+      <tr><td>Category</td><td>${config.category || (config.isCart ? config.items[0].categoryId : '—')}</td></tr>
+      <tr><td>Partnership Level</td><td><strong>${config.partnershipLevel || (config.isCart ? config.items[0].partnershipLevel : 'Standard')}</strong></td></tr>
+      <tr><td>Material</td><td>${config.material || (config.isCart ? config.items[0].material : '—')}</td></tr>
+      <tr><td>Color</td><td>${config.color || (config.isCart ? config.items[0].colorHex : '—')}</td></tr>
+      <tr><td>Heating</td><td>${config.heating || (config.isCart ? config.items[0].heating : false) ? '✅ Included' : '❌ Not included'}</td></tr>
     </table>
   </div>
 
   <div class="section">
     <h2>Logo Customization</h2>
     <table>
-      <tr><td>Backrest</td><td>${config.logos?.schienale ? '✅ Logo applied' : '—'}</td></tr>
-      <tr><td>Headrest</td><td>${config.logos?.poggiatesta ? '✅ Logo applied' : '—'}</td></tr>
-      <tr><td>Seat Back</td><td>${config.logos?.retroSedile ? '✅ Logo applied' : '—'}</td></tr>
-      <tr><td>Bolsters</td><td>${config.logos?.fianchetti ? '✅ Logo applied' : '—'}</td></tr>
+      <tr><td>Custom Logo</td><td>${(config.logoPreview || config.logoBlob || config.customLogo?.url) ? '✅ Logo applied' : '—'}</td></tr>
+      <tr><td>Position</td><td>${(config.logoPosition || config.customLogo?.position) || '—'}</td></tr>
+      <tr><td>RECARO Branding</td><td>${(config.partnershipLevel !== 'Standard') ? '✅ Mandatory (Partner Tier)' : '—'}</td></tr>
     </table>
   </div>
 
@@ -108,13 +108,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   <div class="section">
     <h2>Economic Summary</h2>
     <table>
-      <tr><td>Base Seat Price</td><td>€ ${(config.basePrice || 0).toFixed(2)}</td></tr>
-      <tr><td>Material (${config.material})</td><td>€ ${(config.materialPriceDelta || 0).toFixed(2)}</td></tr>
-      ${config.heating ? `<tr><td>Heating</td><td>€ ${(config.heatingCost || 0).toFixed(2)}</td></tr>` : ''}
-      ${(config.accessoriesTotal || 0) > 0 ? `<tr><td>Accessories</td><td>€ ${(config.accessoriesTotal || 0).toFixed(2)}</td></tr>` : ''}
-      <tr class="total-row"><td>TOTAL</td><td>€ ${Number(order.total_price || 0).toFixed(2)}</td></tr>
+      <tr><td>Original Config Price</td><td>€ ${Number(config.originalPrice || order.total_price || 0).toFixed(2)}</td></tr>
+      ${(config.partnershipLevel && config.partnershipLevel !== 'Standard') ? `
+      <tr><td>Partnership Discount (${config.partnershipLevel})</td><td style="color:#c41e1e">- € ${Math.abs(Number(config.originalPrice || 0) - Number(order.total_price || 0)).toFixed(2)}</td></tr>
+      ` : ''}
+      <tr class="total-row"><td>FINAL TOTAL</td><td>€ ${Number(order.total_price || 0).toFixed(2)}</td></tr>
     </table>
   </div>
+
+  ${config.partnershipLevel === 'Media Partnership' ? `
+  <div class="section" style="background: #fdf2f2; padding: 15px; border-radius: 8px; border: 1px solid #fecaca;">
+    <h2 style="margin-bottom: 8px;">Partnership Agreement Obligations</h2>
+    <p style="font-size: 13px; color: #7f1d1d; line-height: 1.5;">
+      <strong>Notice:</strong> This order is subject to the Media Partnership terms. The customer agrees to provide professional media assets (high-resolution photos and videos) of the installed products within 30 days of delivery. Failure to comply may result in a billing adjustment.
+    </p>
+  </div>
+  ` : ''}
 
   <div class="footer">
     RECARO B2B Platform — Document automatically generated on ${new Date().toLocaleDateString('en-US')} — To be sent to the customer and ERP to process the order
