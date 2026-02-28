@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client';
+import { createClient, Client } from '@libsql/client/web';
 
 let client: Client | null = null;
 
@@ -10,7 +10,7 @@ export function getDb(): Client {
 
   console.log('[DB_INIT_DEBUG]', {
     hasUrl: !!process.env.TURSO_DATABASE_URL,
-    urlStart: url.substring(0, 10),
+    urlStart: url.substring(0, 15),
     hasToken: !!process.env.TURSO_AUTH_TOKEN,
     nodeEnv: process.env.NODE_ENV
   });
@@ -18,11 +18,20 @@ export function getDb(): Client {
   // Next.js 14 fetch polyfill bug fix:
   // It strips .cancel() from response.body, which @libsql/client needs.
   const customFetch = async (...args: any[]) => {
-    const response = await fetch(args[0], args[1]);
-    if (response.body && typeof response.body.cancel !== 'function') {
-      (response.body as any).cancel = async () => { };
+    try {
+      const response = await fetch(args[0], args[1]);
+      if (response.body && typeof response.body.cancel !== 'function') {
+        Object.defineProperty(response.body, 'cancel', {
+          value: async () => { },
+          writable: true,
+          configurable: true
+        });
+      }
+      return response;
+    } catch (e: any) {
+      console.error('[FETCH_ERROR]', e.message);
+      throw e;
     }
-    return response;
   };
 
   try {
@@ -31,12 +40,11 @@ export function getDb(): Client {
       authToken,
       fetch: customFetch as any
     });
+    return client;
   } catch (err: any) {
-    console.error('Failed to initialize database client:', err);
-    throw new Error('Database connection failed. Please check environment variables.');
+    console.error('CRITICAL_DB_INIT_FAILURE:', err);
+    throw new Error(`DB_INIT_ERROR: ${err.message} | URL: ${url.substring(0, 20)}...`);
   }
-
-  return client;
 }
 
 export async function initSchema() {
