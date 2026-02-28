@@ -132,7 +132,11 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json({
-            error: 'Errore interno del server. Riprova più tardi.'
+            error: 'Errore interno del server.',
+            details: err.message,
+            stack: err.stack,
+            code: err.code
         }, { status: 500 });
+
     }
 }
