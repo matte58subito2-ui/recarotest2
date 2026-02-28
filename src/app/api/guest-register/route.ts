@@ -7,10 +7,24 @@ export async function POST(request: NextRequest) {
         const data = await request.json();
         const db = getDb();
 
-        // Basic validation
+        // Strict Input Validation
         if (!data.companyName || !data.vat || !data.address || !data.email || !data.password) {
             return NextResponse.json({ error: 'Tutti i campi sono obbligatori' }, { status: 400 });
         }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.email)) {
+            return NextResponse.json({ error: 'Formato email non valido' }, { status: 400 });
+        }
+
+        if (data.password.length < 8) {
+            return NextResponse.json({ error: 'La password deve avere almeno 8 caratteri' }, { status: 400 });
+        }
+
+        if (data.vat.length > 30 || data.companyName.length > 200 || data.address.length > 500) {
+            return NextResponse.json({ error: 'I campi superano la lunghezza massima consentita' }, { status: 400 });
+        }
+
 
         // Check if user already exists
         const existingUserRes = await db.execute({

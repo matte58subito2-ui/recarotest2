@@ -31,13 +31,35 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No active verification found' }, { status: 400 });
         }
 
+        if (Number(verification.attempts) >= 5) {
+            await db.execute({
+                sql: 'DELETE FROM otp_verifications WHERE id = ?',
+                args: [Number(verification.id)]
+            });
+            return NextResponse.json({ error: 'Troppi tentativi falliti. Richiedi un nuovo codice.' }, { status: 403 });
+        }
+
         if (new Date() > new Date(verification.expires_at as string)) {
-            return NextResponse.json({ error: 'Verification code expired' }, { status: 400 });
+            return NextResponse.json({ error: 'Codice di verifica scaduto' }, { status: 400 });
         }
 
         if (verification.otp_code !== otp) {
-            return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+            const newAttempts = Number(verification.attempts || 0) + 1;
+            if (newAttempts >= 5) {
+                await db.execute({
+                    sql: 'DELETE FROM otp_verifications WHERE id = ?',
+                    args: [Number(verification.id)]
+                });
+                return NextResponse.json({ error: 'Troppi tentativi falliti. Il codice è stato rimosso.' }, { status: 403 });
+            } else {
+                await db.execute({
+                    sql: 'UPDATE otp_verifications SET attempts = ? WHERE id = ?',
+                    args: [newAttempts, Number(verification.id)]
+                });
+                return NextResponse.json({ error: `Codice non valido. Tentativi rimasti: ${5 - newAttempts}` }, { status: 400 });
+            }
         }
+
 
         // Success: Authorize the device
         await db.execute({

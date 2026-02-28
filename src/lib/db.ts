@@ -168,8 +168,10 @@ export async function initSchema() {
     user_id INTEGER NOT NULL,
     fingerprint TEXT NOT NULL,
     otp_code TEXT NOT NULL,
-    expires_at TEXT NOT NULL
+    expires_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0
   )`);
+
 
   await db.execute(`CREATE TABLE IF NOT EXISTS sync_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,6 +198,14 @@ export async function initSchema() {
   if (!fingerCols.includes('user_agent')) {
     await db.execute("ALTER TABLE user_fingerprints ADD COLUMN user_agent TEXT");
   }
+
+  // Evolve otp_verifications for brute-force protection
+  const otpRes = await db.execute("PRAGMA table_info(otp_verifications)");
+  const otpCols = otpRes.rows.map(c => c.name as string);
+  if (!otpCols.includes('attempts')) {
+    await db.execute("ALTER TABLE otp_verifications ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0");
+  }
+
 
   // Initialize default API key if not exists
   const hasApiKeyRes = await db.execute({
