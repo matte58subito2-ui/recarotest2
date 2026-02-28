@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client';
+import { createClient, Client } from '@libsql/client/web';
 
 let client: Client | null = null;
 
@@ -8,10 +8,19 @@ export function getDb(): Client {
   const url = process.env.TURSO_DATABASE_URL || `file:${process.cwd()}/data/recaro.db`;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
+  const customFetch = async (...args: Parameters<typeof fetch>) => {
+    const response = await fetch(...args);
+    if (response.body && typeof response.body.cancel !== 'function') {
+      (response.body as any).cancel = async () => { };
+    }
+    return response;
+  };
+
   try {
     client = createClient({
       url,
       authToken,
+      fetch: customFetch as any
     });
     // We don't execute a query here because it might be expensive on setiap getDb call, 
     // but the client initialization is now guarded.
