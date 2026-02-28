@@ -109,10 +109,12 @@ export async function POST(request: NextRequest) {
         const response = NextResponse.json({ ok: true, role: user.role });
         response.cookies.set(COOKIE_NAME, token, {
             httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 8, // 8 hours
             path: '/',
         });
+
         return response;
     } catch (err: any) {
         console.error('[LOGIN_API_ERROR_FULL]', {

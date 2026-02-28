@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'recaro-b2b-secret-2024-make-this-secure-in-prod';
+// SECURITY: JWT_SECRET must be set in environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
+
 const COOKIE_NAME = 'recaro_session';
 
 import { getDb } from './db';
@@ -14,14 +16,18 @@ export interface SessionUser {
 }
 
 export function signToken(user: SessionUser): string {
+    if (!JWT_SECRET) throw new Error('[AUTH] JWT_SECRET is not configured.');
     const jti = Math.random().toString(36).substring(2, 15);
     const iat = Math.floor(Date.now() / 1000);
     return jwt.sign({ ...user, jti, iat }, JWT_SECRET, { expiresIn: '8h' });
+
 }
 
 export async function verifyToken(token: string): Promise<SessionUser | null> {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as SessionUser & { iat: number };
+        if (!JWT_SECRET) return null;
+        const decoded = jwt.verify(token, JWT_SECRET) as unknown as SessionUser & { iat: number };
+
         if (!decoded.jti) return decoded as SessionUser;
 
         const db = getDb();

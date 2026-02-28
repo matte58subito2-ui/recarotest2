@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
         console.log(`\n--- [EMAIL NOTIFICATION] ---`);
         console.log(`To: ${email}`);
         console.log(`Subject: Ripristino Password RECARO B2B`);
-        console.log(`Body: Clicca sul seguente link per resettare la tua password: http://localhost:3000/password-reset?token=${token}`);
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://recaro.vercel.app';
+        console.log(`Body: Clicca sul seguente link per resettare la tua password: ${siteUrl}/password-reset?token=${token}`);
         console.log(`--- [LOGGED TO CONSOLE] ---\n`);
 
         return NextResponse.json({ message: 'Se l\'email è registrata ed attiva, riceverai un link di ripristino.' });

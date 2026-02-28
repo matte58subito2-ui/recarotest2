@@ -10,7 +10,13 @@ function generateOrderNumber() {
 
 export async function POST(request: NextRequest) {
     const session = await getSession();
-    const userId = session ? session.id : null;
+
+    // SECURITY FIX: Require authentication to create orders
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = session.id;
 
     const config = await request.json();
     const db = getDb();

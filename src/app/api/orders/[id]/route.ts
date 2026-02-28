@@ -16,9 +16,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const order = orderRes.rows[0];
     if (!order) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // If no session but there's a guest cookie, make sure this order is actually a guest order
+    // SECURITY FIX: IDOR — verify ownership
     if (!session && order.user_id !== null) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (session && order.user_id !== null && Number(order.user_id) !== session.id && session.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const config = JSON.parse(order.config_json as string);
