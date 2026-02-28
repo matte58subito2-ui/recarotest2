@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client/web';
+import { createClient, Client } from '@libsql/client';
 
 let client: Client | null = null;
 
@@ -8,8 +8,10 @@ export function getDb(): Client {
   const url = process.env.TURSO_DATABASE_URL || `file:${process.cwd()}/data/recaro.db`;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  const customFetch = async (...args: Parameters<typeof fetch>) => {
-    const response = await fetch(...args);
+  // Next.js 14 fetch polyfill bug fix:
+  // It strips .cancel() from response.body, which @libsql/client needs.
+  const customFetch = async (...args: any[]) => {
+    const response = await fetch(args[0], args[1]);
     if (response.body && typeof response.body.cancel !== 'function') {
       (response.body as any).cancel = async () => { };
     }
@@ -22,11 +24,9 @@ export function getDb(): Client {
       authToken,
       fetch: customFetch as any
     });
-    // We don't execute a query here because it might be expensive on setiap getDb call, 
-    // but the client initialization is now guarded.
   } catch (err: any) {
     console.error('Failed to initialize database client:', err);
-    throw new Error('Database connection failed. URL: ' + url + ' | Error: ' + err.message);
+    throw new Error('Database connection failed. Please check environment variables.');
   }
 
   return client;
