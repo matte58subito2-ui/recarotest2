@@ -8,13 +8,6 @@ export function getDb(): Client {
   const url = process.env.TURSO_DATABASE_URL || `file:${process.cwd()}/data/recaro.db`;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  console.log('[DB_INIT_DEBUG]', {
-    hasUrl: !!process.env.TURSO_DATABASE_URL,
-    urlStart: url.substring(0, 15),
-    hasToken: !!process.env.TURSO_AUTH_TOKEN,
-    nodeEnv: process.env.NODE_ENV
-  });
-
   // Next.js 14 fetch polyfill bug fix:
   // It strips .cancel() from response.body, which @libsql/client needs.
   const customFetch = async (...args: any[]) => {

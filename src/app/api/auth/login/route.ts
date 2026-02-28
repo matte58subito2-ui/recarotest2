@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         if (visitorId) {
             const fingerprintsRes = await db.execute({
                 sql: 'SELECT * FROM user_fingerprints WHERE user_id = ? AND fingerprint = ?',
-                args: [user.id, visitorId]
+                args: [user.id, visitorId ?? null]
             });
             let fingerprint = fingerprintsRes.rows[0] as any;
 
@@ -44,13 +44,13 @@ export async function POST(request: NextRequest) {
 
                 await db.execute({
                     sql: 'INSERT INTO user_fingerprints (user_id, fingerprint, label, is_approved, last_ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
-                    args: [user.id, visitorId, 'New Device', isApproved, ip, userAgent]
+                    args: [user.id, visitorId ?? null, 'New Device', isApproved, ip, userAgent]
                 });
 
                 // Log the event
                 await db.execute({
                     sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
-                    args: [user.id, isApproved ? 'DEVICE_AUTO_APPROVED_ADMIN' : 'DEVICE_ENROLLMENT_PENDING', ip, visitorId, JSON.stringify({ userAgent })]
+                    args: [user.id, isApproved ? 'DEVICE_AUTO_APPROVED_ADMIN' : 'DEVICE_ENROLLMENT_PENDING', ip, visitorId ?? null, JSON.stringify({ userAgent })]
                 });
 
                 if (!isApproved) {
@@ -73,13 +73,13 @@ export async function POST(request: NextRequest) {
                     // Log the auto-approval
                     await db.execute({
                         sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
-                        args: [user.id, 'DEVICE_AUTO_APPROVED_ADMIN', ip, visitorId, JSON.stringify({ note: 'Auto-approved during emergency bypass' })]
+                        args: [user.id, 'DEVICE_AUTO_APPROVED_ADMIN', ip, visitorId ?? null, JSON.stringify({ note: 'Auto-approved during emergency bypass' })]
                     });
                 } else {
                     // Log attempt
                     await db.execute({
                         sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id, details) VALUES (?, ?, ?, ?, ?)',
-                        args: [user.id, 'LOGIN_BLOCKED_PENDING_APPROVAL', ip, visitorId, JSON.stringify({ userAgent })]
+                        args: [user.id, 'LOGIN_BLOCKED_PENDING_APPROVAL', ip, visitorId ?? null, JSON.stringify({ userAgent })]
                     });
 
                     return NextResponse.json({
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         // Log success
         await db.execute({
             sql: 'INSERT INTO audit_logs (user_id, action, ip_address, device_id) VALUES (?, ?, ?, ?)',
-            args: [user.id, 'LOGIN_SUCCESS', ip, visitorId]
+            args: [user.id, 'LOGIN_SUCCESS', ip, visitorId ?? null]
         });
 
         const response = NextResponse.json({ ok: true, role: user.role });
@@ -125,14 +125,12 @@ export async function POST(request: NextRequest) {
         // Return more specific error message if it's a database connection issue
         if (err.message?.includes('Database connection failed') || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
             return NextResponse.json({
-                error: 'Errore di connessione al database. Verifica le credenziali TURSO.',
-                debug: err.message, stack: err.stack
+                error: 'Errore di connessione al database. Verifica le credenziali TURSO.'
             }, { status: 500 });
         }
 
         return NextResponse.json({
-            error: 'Errore interno del server. Riprova più tardi.',
-            debug: err.message, stack: err.stack
+            error: 'Errore interno del server. Riprova più tardi.'
         }, { status: 500 });
     }
 }
