@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client/sqlite3';
+import { createClient, Client } from '@libsql/client/web';
 
 let client: Client | null = null;
 
@@ -24,9 +24,9 @@ export function getDb(): Client {
     });
     // We don't execute a query here because it might be expensive on setiap getDb call, 
     // but the client initialization is now guarded.
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to initialize database client:', err);
-    throw new Error('Database connection failed. Please check environment variables.');
+    throw new Error('Database connection failed. URL: ' + url + ' | Error: ' + err.message);
   }
 
   return client;
