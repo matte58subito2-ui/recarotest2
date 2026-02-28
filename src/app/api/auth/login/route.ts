@@ -126,13 +126,13 @@ export async function POST(request: NextRequest) {
         if (err.message?.includes('Database connection failed') || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
             return NextResponse.json({
                 error: 'Errore di connessione al database. Verifica le credenziali TURSO.',
-                debug: process.env.NODE_ENV === 'development' ? err.message : undefined
+                debug: err.message, stack: err.stack
             }, { status: 500 });
         }
 
         return NextResponse.json({
             error: 'Errore interno del server. Riprova più tardi.',
-            debug: process.env.NODE_ENV === 'development' ? err.message : undefined
+            debug: err.message, stack: err.stack
         }, { status: 500 });
     }
 }

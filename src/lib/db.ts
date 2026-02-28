@@ -1,4 +1,4 @@
-import { createClient, Client } from '@libsql/client/web';
+import { createClient, Client } from '@libsql/client/sqlite3';
 
 let client: Client | null = null;
 
